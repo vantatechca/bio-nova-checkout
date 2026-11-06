@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo store – thank you</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 480px; margin: 15vh auto; padding: 0 16px; text-align: center; }
+    code { background: #8882; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Back on the store 🎉</h1>
+  <p>This is the demo <code>success_url</code>. Your store would show its own thank-you page here.</p>
+  <p id="query"></p>
+  <p><a href="/admin">Open admin</a></p>
+  <script>document.getElementById('query').textContent = 'Query: ' + location.search;</script>
+</body>
+</html>

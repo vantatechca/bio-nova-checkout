@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Order Admin</title>
+  <link rel="stylesheet" href="/static/shared/tokens.css">
+  <link rel="stylesheet" href="/static/admin/admin.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { const t = localStorage.getItem('checkout-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- Sign-in -->
+  <div id="login" class="login-wrap hide">
+    <div class="login-art" aria-hidden="true">
+      <div class="orb o1"></div><div class="orb o2"></div>
+      <div class="login-copy"><h2>Every order,<br>one calm place.</h2><p>Confirm Zelle &amp; Interac payments, track revenue and keep customers informed.</p></div>
+    </div>
+    <form id="login-form" class="login-card">
+      <span class="logo big" id="login-logo">C</span>
+      <h1>Welcome back</h1>
+      <p class="muted">Sign in to manage your orders.</p>
+      <label>Password<input type="password" id="password" autofocus autocomplete="current-password" placeholder="••••••••"></label>
+      <div class="msg err" id="login-error" role="alert"></div>
+      <button class="primary full">Sign in</button>
+    </form>
+  </div>
+
+  <!-- App shell -->
+  <div id="shell" class="app hide">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-row">
+        <span class="logo" id="logo">C</span>
+        <div class="brand-text"><b id="brand">Orders</b><small>Order admin</small></div>
+      </div>
+
+      <nav id="nav" aria-label="Main">
+        <p class="nav-label">Orders</p>
+        <button class="tab" data-tab="pending"><span class="ico" data-icon="clock"></span><span class="t">Pending</span><span class="count" data-count="pending">0</span></button>
+        <button class="tab" data-tab="paid"><span class="ico" data-icon="check-circle"></span><span class="t">Paid</span><span class="count" data-count="paid">0</span></button>
+        <button class="tab" data-tab="failed"><span class="ico" data-icon="x-circle"></span><span class="t">Failed / Cancelled</span><span class="count" data-count="failed">0</span></button>
+
+        <p class="nav-label">Insights</p>
+        <button class="tab" data-tab="revenue"><span class="ico" data-icon="trending"></span><span class="t">Revenue</span></button>
+        <button class="tab" data-tab="visits"><span class="ico" data-icon="eye"></span><span class="t">Visits</span></button>
+
+        <p class="nav-label">Manage</p>
+        <button class="tab" data-tab="email"><span class="ico" data-icon="mail"></span><span class="t">Email</span></button>
+        <button class="tab" data-tab="settings"><span class="ico" data-icon="sliders"></span><span class="t">Settings &amp; API</span></button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <button id="theme-toggle" class="ghost" title="Toggle dark mode"><span class="ico" data-icon="moon"></span><span class="t">Theme</span></button>
+        <button id="sign-out" class="ghost"><span class="ico" data-icon="logout"></span><span class="t">Sign out</span></button>
+      </div>
+    </aside>
+    <div class="scrim hide" id="scrim"></div>
+
+    <div class="content">
+      <header class="page-head">
+        <button id="menu" class="icon-only menu-btn" aria-label="Open menu"><span data-icon="menu"></span></button>
+        <div class="titles"><h1 id="page-title">Orders</h1><p id="page-sub" class="muted"></p></div>
+      </header>
+
+      <main>
+        <section id="view-orders" class="hide">
+          <div class="card flush">
+            <div class="toolbar">
+              <div class="search-box"><span data-icon="search"></span><input id="search" type="search" placeholder="Search order #, name, email, reference…" aria-label="Search orders"></div>
+              <select id="status-filter" aria-label="Filter by status"><option value="">All statuses</option></select>
+              <button id="refresh" class="icon-only" aria-label="Refresh" title="Refresh"><span data-icon="refresh"></span></button>
+            </div>
+            <p id="orders-intro" class="muted notice hide"></p>
+            <div class="table-wrap"><table><thead><tr id="orders-head"></tr></thead><tbody id="orders-body"></tbody></table></div>
+            <div id="orders-empty" class="empty hide"><div class="empty-art"><span data-icon="package"></span></div><b>Nothing here yet</b><p class="muted">Orders will appear as soon as customers check out.</p></div>
+          </div>
+        </section>
+        <section id="view-revenue" class="hide"></section>
+        <section id="view-email" class="hide"></section>
+        <section id="view-visits" class="hide"></section>
+        <section id="view-settings" class="hide"></section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Order details drawer -->
+  <div id="overlay" class="overlay hide"><div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Order details"></div></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="/static/admin/js/main.js"></script>
+</body>
+</html>

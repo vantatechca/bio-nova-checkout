@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Checkout</title>
+  <link rel="stylesheet" href="/static/shared/tokens.css">
+  <link rel="stylesheet" href="/static/checkout/checkout.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header" id="site-header"></header>
+
+    <nav class="stepper" id="stepper" aria-label="Progress" hidden></nav>
+
+    <main class="layout" id="app">
+      <div class="state-card" role="status">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading your checkout…</p>
+      </div>
+    </main>
+
+    <footer class="foot">Payments and personal details are handled securely. Questions about your order? Contact the store you came from.</footer>
+  </div>
+  <script type="module" src="/static/checkout/checkout.js"></script>
+</body>
+</html>

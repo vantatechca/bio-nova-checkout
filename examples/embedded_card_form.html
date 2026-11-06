@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- Reference card form for the checkout's "Client-hosted card form" provider (docs/embedded-card-form.md).
+     It uses a FAKE tokenizer so the whole flow can be tried locally; a real client replaces `createToken()` with
+     their processor's hosted fields. Serve it on another origin than the checkout, e.g.:
+         python -m http.server 9001 --directory examples
+     then set the card form URL in the admin to  http://localhost:9001/embedded_card_form.html
+     Test cards: 4242 4242 4242 4242 succeeds, 4000 0000 0000 0002 is declined by examples/client_payment_api.py -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card form</title>
+<style>
+  body { margin: 0; padding: 2px; font: 15px/1.4 system-ui, sans-serif; color: #0f172a; }
+  .note { font-size: 12.5px; color: #6b7280; background: #f6f7f9; border: 1px dashed #d3d7df; border-radius: 4px; padding: 8px 10px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 12px; }
+  input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 12px 13px; font: inherit; border: 1px solid #d3d7df; border-radius: 6px; }
+  input:focus { outline: none; border-color: #0a47d6; box-shadow: 0 0 0 3px rgba(10, 71, 214, 0.22); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .row label { margin-bottom: 0; }
+</style>
+</head>
+<body>
+  <p class="note">Test mode — fake card form. Try <b>4242 4242 4242 4242</b> (approved) or <b>4000 0000 0000 0002</b> (declined).</p>
+  <label>Card number<input id="number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242" maxlength="23"></label>
+  <div class="row">
+    <label>Expiry<input id="expiry" inputmode="numeric" autocomplete="cc-exp" placeholder="MM / YY" maxlength="7"></label>
+    <label>CVC<input id="cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4"></label>
+  </div>
+
+<script>
+  // Which page may embed us and talk to us. Use the checkout's real origin in production.
+  const CHECKOUT_ORIGIN = new URLSearchParams(location.search).get('origin') || 'http://localhost:3000';
+  const FROM_FORM = 'checkout-card-form';
+
+  const luhn = (digits) => [...digits].reverse().reduce((sum, d, i) => {
+    let n = Number(d);
+    if (i % 2) { n *= 2; if (n > 9) n -= 9; }
+    return sum + n;
+  }, 0) % 10 === 0;
+
+  // Replace this with the processor's SDK (e.g. Stripe Elements: stripe.createToken / confirmation token).
+  async function createToken() {
+    const digits = document.getElementById('number').value.replace(/\D/g, '');
+    const expiry = document.getElementById('expiry').value.replace(/\D/g, '');
+    const cvc = document.getElementById('cvc').value.replace(/\D/g, '');
+    if (digits.length < 13 || digits.length > 19 || !luhn(digits)) throw new Error('Please enter a valid card number');
+    if (expiry.length !== 4 || Number(expiry.slice(0, 2)) < 1 || Number(expiry.slice(0, 2)) > 12) throw new Error('Please enter a valid expiry date');
+    if (cvc.length < 3) throw new Error('Please enter the security code');
+    return `tok_mock_${digits.slice(-4)}`;
+  }
+
+  const send = (message) => parent.postMessage({ source: FROM_FORM, ...message }, CHECKOUT_ORIGIN);
+
+  addEventListener('message', async (event) => {
+    if (event.origin !== CHECKOUT_ORIGIN || event.source !== parent) return;
+    const msg = event.data;
+    if (!msg || msg.source !== 'checkout' || msg.type !== 'tokenize') return;
+    try {
+      send({ type: 'token', id: msg.id, token: await createToken() });
+    } catch (err) {
+      send({ type: 'error', id: msg.id, message: err.message });
+    }
+  });
+
+  send({ type: 'height', height: document.documentElement.scrollHeight + 8 });
+  send({ type: 'ready' });
+</script>
+</body>
+</html>

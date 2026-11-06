@@ -1,0 +1,33 @@
+# Local / small-server setup:  ADMIN_PASSWORD=change-me docker compose up --build
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-change-me-too}
+      MYSQL_DATABASE: checkout
+      MYSQL_USER: checkout
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-change-me-too}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://checkout:${DB_PASSWORD:-change-me}@db:3306/checkout
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+
+volumes:
+  db-data:
