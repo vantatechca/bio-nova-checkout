@@ -65,7 +65,7 @@ class Harness:
         assert r.status_code == 201, r.text
         return r.json()
 
-    def complete(self, session_id: str, method: str = "cod", **overrides):
+    def complete(self, session_id: str, method: str = "bank", **overrides):
         body = {
             "customer": {"name": "Ada Lovelace", "email": "ada@example.com"},
             "shipping_address": ADDRESS,
@@ -74,7 +74,7 @@ class Harness:
         }
         return self.client.post(f"/api/public/sessions/{session_id}/complete", json=body)
 
-    def place_order(self, method: str = "cod", items=None, **extra) -> dict:
+    def place_order(self, method: str = "bank", items=None, **extra) -> dict:
         """Creates a session and places the order; returns the admin view of the order."""
         session = self.create_session(items, **extra)
         r = self.complete(session["id"], method)

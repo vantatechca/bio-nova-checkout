@@ -83,7 +83,7 @@ export async function loadSettings() {
       <label>Allowed redirect domains <span class="muted">(comma separated, blank = any — recommended: your store's domain)</span><input data-field="allowedDomains" placeholder="yourstore.com" value="${esc(cfg.allowedDomains)}"></label>
 
       <h3>Payment methods</h3>
-      <p class="muted" style="font-size:13.5px;margin:0 0 12px">Offline methods (Zelle, Interac, bank, COD) leave the order in <b>Pending</b> until you mark it paid. In instructions, <code>{order}</code>, <code>{total}</code> and <code>{store}</code> are filled in automatically — set your real Zelle / Interac address here.</p>
+      <p class="muted" style="font-size:13.5px;margin:0 0 12px">Offline methods (Zelle, bank) leave the order in <b>Pending</b> until you mark it paid. In instructions, <code>{order}</code>, <code>{total}</code> and <code>{store}</code> are filled in automatically — set your real Zelle address here.</p>
       <div data-role="methods"></div>
       <button data-role="add-method">${icon('plus')} Add method</button>
       <div class="row" style="margin-top:20px"><button class="primary" data-role="save">Save settings</button><span class="msg" data-role="save-msg"></span></div>

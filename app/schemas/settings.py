@@ -15,10 +15,6 @@ DEFAULT_ZELLE = (
     'Send {total} via Zelle to payments@yourstore.com and put "Order #{order}" in the memo. '
     "We mark your order paid as soon as it arrives."
 )
-DEFAULT_INTERAC = (
-    'Send {total} via Interac e-Transfer to payments@yourstore.com and put "Order #{order}" in the message. '
-    "We mark your order paid as soon as it arrives."
-)
 
 
 def new_secret(prefix: str, nbytes: int = 24) -> str:
@@ -40,10 +36,8 @@ class PaymentMethod(CamelModel):
 
 def default_payment_methods() -> list[PaymentMethod]:
     return [
-        PaymentMethod(id="cod", label="Pay on delivery", instructions="Pay when your order arrives."),
         PaymentMethod(id="bank", label="Bank transfer", instructions="We will email you the bank details."),
         PaymentMethod(id="zelle", label="Zelle", instructions=DEFAULT_ZELLE),
-        PaymentMethod(id="interac", label="Interac e-Transfer", instructions=DEFAULT_INTERAC),
         PaymentMethod(
             id="test",
             label="Test payment (no real charge)",

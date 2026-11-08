@@ -12,8 +12,8 @@ PHONE = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17) Mobile/15E148"}
 class TestRevenue:
     def test_totals_average_and_methods(self, h):
         h.place_order("test")
-        interac = h.place_order("interac")["number"]
-        h.update_order(interac, payment_status="paid")
+        paid_bank = h.place_order("bank")["number"]
+        h.update_order(paid_bank, payment_status="paid")
         h.place_order("zelle")  # still awaiting payment
         r = h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 7}).json()
         assert (r["today"], r["last7"], r["last30"], r["all_time"]) == (10000, 10000, 10000, 10000)
@@ -22,7 +22,7 @@ class TestRevenue:
         assert len(r["daily"]) == 7 and r["daily"][-1]["amount"] == 10000 and r["daily"][-1]["orders"] == 2
         assert {m["label"]: m["amount"] for m in r["by_method"]} == {
             "Test payment (no real charge)": 5000,
-            "Interac e-Transfer": 5000,
+            "Bank transfer": 5000,
         }
 
     def test_refunds_are_excluded_from_revenue(self, h):
@@ -32,7 +32,7 @@ class TestRevenue:
         assert r["all_time"] == 0 and (r["refunded"], r["refunded_count"]) == (5000, 1)
 
     def test_unpaid_orders_are_not_revenue(self, h):
-        h.place_order("interac")
+        h.place_order("bank")
         assert h.client.get("/api/admin/revenue", headers=h.admin).json()["all_time"] == 0
 
     def test_other_currencies_are_excluded_and_counted(self, h):
@@ -69,7 +69,7 @@ class TestVisits:
             f"/api/public/sessions/{viewed_and_ordered}", params={"ref": "https://shop.test/cart"}, headers=PHONE
         )
         h.client.get(f"/api/public/sessions/{viewed_only}", headers=BROWSER)
-        h.complete(viewed_and_ordered, "cod")
+        h.complete(viewed_and_ordered, "bank")
         v = h.client.get("/api/admin/visits", headers=h.admin, params={"days": 7}).json()
         assert (v["views"], v["visitors"]) == (2, 2)
         assert v["funnel"] == {"created": 3, "viewed": 2, "ordered": 1, "conversion": 50.0}

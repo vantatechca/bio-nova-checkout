@@ -73,7 +73,7 @@ class TestCreatingACheckout:
 
     def test_the_customer_can_place_the_order_on_the_resulting_checkout(self, h, connected):
         session_id = post(h, cart((11, 1))).json()["checkout_url"].split("=")[1]
-        order = h.complete(session_id, "interac").json()
+        order = h.complete(session_id, "zelle").json()
         assert order["order_number"] == 1001 and "$25.00" in order["payment_instructions"]
         assert h.order(1001)["external_ref"] == "shopify:cart_abc"
 

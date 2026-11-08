@@ -2,7 +2,7 @@
 
 A hosted checkout page, an order-management admin and a REST API you connect your store to. Your store sends
 the cart to the API, gets back a `checkout_url`, and redirects the customer there. Staff manage the orders
-(including Zelle / Interac payments that are confirmed by hand) in `/admin`.
+(including Zelle payments that are confirmed by hand) in `/admin`.
 
 **Stack:** Python 3.12 · FastAPI · SQLAlchemy 2 · MySQL 8 · Alembic · plain HTML/CSS/ES-modules frontend (no build step).
 
@@ -157,7 +157,7 @@ event `id`**, so de-duplicate on `id`. Retries are stored in the database, so th
 
 ## Admin
 
-- **Pending** – awaiting payment. Zelle / Interac / bank / COD orders land here. Click **Mark paid** (optionally with the
+- **Pending** – awaiting payment. Zelle / bank orders land here. Click **Mark paid** (optionally with the
   transfer's confirmation #) once the money arrives: the order moves to **Paid** and becomes `processing`.
 - **Paid**, **Failed / Cancelled** (cancelled, failed payments, refunds).
 - **Revenue** – today / 7d / 30d / all-time, daily chart, average order, outstanding and refunded totals, by payment method.
@@ -174,7 +174,7 @@ The checkout page is styled like a storefront (white, flat boxes, royal-blue act
 the header shows the item count and returns the customer to your cart. To change the colours, edit the variables at the top
 of `frontend/checkout/checkout.css` (`--brand` is the blue).
 
-Set your real Zelle / Interac address in **Settings → Payment methods**; `{order}`, `{total}` and `{store}` in the
+Set your real Zelle address in **Settings → Payment methods**; `{order}`, `{total}` and `{store}` in the
 instructions are filled in per order and included in the confirmation email.
 
 ## Project layout
@@ -209,7 +209,7 @@ Layering: `api → services → repositories → models`. Services never commit;
   then delivered by a worker (`SELECT … FOR UPDATE SKIP LOCKED` with a lease). Nothing is lost on a crash, and several
   instances can run workers safely.
 - **Admin tokens are stateless** (signed, expiring), so restarts and multiple instances don't sign admins out.
-- **Payments:** only offline methods (Zelle, Interac, bank, COD) and a *test* gateway are included, and no card data is
+- **Payments:** only offline methods (Zelle, bank) and a *test* gateway are included, and no card data is
   collected. To take cards, add a gateway class in `app/services/payments.py` (verify the payment server-side and return
   `paid`).
 

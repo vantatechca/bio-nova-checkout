@@ -11,7 +11,7 @@ from app.services.client_payment_api import sign
 from tests.helpers import ADDRESS
 
 CARD_METHOD = {"id": "card", "label": "Credit card", "type": "card", "instructions": "", "enabled": True}
-COD_METHOD = {"id": "cod", "label": "Pay on delivery", "type": "offline", "instructions": "", "enabled": True}
+BANK_METHOD = {"id": "bank", "label": "Bank transfer", "type": "offline", "instructions": "", "enabled": True}
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def card(h, client_api):
         cardProvider="mock",
         cardPublicKey="pk_test_123",
         clientApiUrl=client_api.url,
-        paymentMethods=[CARD_METHOD, COD_METHOD],
+        paymentMethods=[CARD_METHOD, BANK_METHOD],
     )
     client_api.secret = h.client.get("/api/admin/settings", headers=h.admin).json()["clientApiSecret"]
     return client_api
@@ -40,20 +40,20 @@ def pay(h, session_id, token="tok_mock_4242", **overrides):
 
 class TestOfferingCards:
     def test_card_is_hidden_until_the_processor_is_configured(self, h):
-        h.configure(paymentMethods=[CARD_METHOD, COD_METHOD])
+        h.configure(paymentMethods=[CARD_METHOD, BANK_METHOD])
         view = h.client.get(f"/api/public/sessions/{h.create_session()['id']}").json()
-        assert [m["id"] for m in view["paymentMethods"]] == ["cod"] and view["card"] is None
+        assert [m["id"] for m in view["paymentMethods"]] == ["bank"] and view["card"] is None
 
     def test_card_appears_with_the_publishable_key_only(self, h, card):
         view = h.client.get(f"/api/public/sessions/{h.create_session()['id']}").json()
-        assert [(m["id"], m["type"]) for m in view["paymentMethods"]] == [("card", "card"), ("cod", "offline")]
+        assert [(m["id"], m["type"]) for m in view["paymentMethods"]] == [("card", "card"), ("bank", "offline")]
         assert view["card"] == {"provider": "mock", "public_key": "pk_test_123", "form_url": ""}
         assert card.secret not in json.dumps(view)
 
     def test_embedded_provider_needs_the_clients_card_form_url(self, h, card):
         h.configure(cardProvider="embed", cardFormUrl="")
         view = h.client.get(f"/api/public/sessions/{h.create_session()['id']}").json()
-        assert view["card"] is None and [m["id"] for m in view["paymentMethods"]] == ["cod"]
+        assert view["card"] is None and [m["id"] for m in view["paymentMethods"]] == ["bank"]
         h.configure(cardProvider="embed", cardFormUrl="https://client.example.com/card-form")
         view = h.client.get(f"/api/public/sessions/{h.create_session()['id']}").json()
         assert view["card"] == {
@@ -61,7 +61,7 @@ class TestOfferingCards:
             "public_key": "pk_test_123",
             "form_url": "https://client.example.com/card-form",
         }
-        assert [m["id"] for m in view["paymentMethods"]] == ["card", "cod"]
+        assert [m["id"] for m in view["paymentMethods"]] == ["card", "bank"]
 
     def test_embedded_card_payment_is_charged_through_the_clients_api(self, h, card):
         h.configure(cardProvider="embed", cardFormUrl="https://client.example.com/card-form")
@@ -269,7 +269,7 @@ class TestRedirectPaymentPage:
 
     def test_redirect_needs_no_card_form_url(self, h, redirect):
         view = public_view(h, h.create_session()["id"])
-        assert view["card"]["provider"] == "redirect" and [m["id"] for m in view["paymentMethods"]] == ["card", "cod"]
+        assert view["card"]["provider"] == "redirect" and [m["id"] for m in view["paymentMethods"]] == ["card", "bank"]
 
     def test_pay_creates_a_pending_order_and_returns_the_payment_page(self, h, redirect):
         session = h.create_session(external_ref="cart_9")
@@ -321,14 +321,14 @@ class TestRedirectPaymentPage:
 class TestCardOnlyCheckout:
     def test_when_the_other_methods_are_disabled_card_is_the_only_option(self, h, card):
         offline = [
-            {**COD_METHOD, "enabled": False},
+            {**BANK_METHOD, "enabled": False},
             {"id": "zelle", "label": "Zelle", "type": "offline", "instructions": "", "enabled": False},
         ]
         h.configure(paymentMethods=[CARD_METHOD, *offline])
         session_id = h.create_session()["id"]
         assert [m["id"] for m in public_view(h, session_id)["paymentMethods"]] == ["card"]
         assert h.complete(session_id, "zelle").status_code == 400  # a disabled method can't be forced through
-        assert h.complete(session_id, "cod").status_code == 400
+        assert h.complete(session_id, "bank").status_code == 400
         assert h.sql("SELECT COUNT(*) FROM orders")[0][0] == 0
         assert pay(h, session_id).status_code == 200
 

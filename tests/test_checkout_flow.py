@@ -82,8 +82,8 @@ class TestCustomerPage:
         body = r.json()
         assert r.headers["access-control-allow-origin"] == "*"
         assert body["storeName"] == "My Store" and body["total"] == 5000
-        interac = next(m for m in body["paymentMethods"] if m["id"] == "interac")
-        assert "$50.00" in interac["instructions"] and "{total}" not in interac["instructions"]
+        zelle = next(m for m in body["paymentMethods"] if m["id"] == "zelle")
+        assert "$50.00" in zelle["instructions"] and "{total}" not in zelle["instructions"]
         assert "apiKey" not in r.text and "webhookSecret" not in r.text
 
     def test_unknown_session_is_404(self, client):
@@ -91,20 +91,20 @@ class TestCustomerPage:
 
     def test_disabled_payment_methods_are_hidden_and_rejected(self, h):
         methods = [
-            {"id": "cod", "label": "COD", "type": "offline", "instructions": "", "enabled": False},
+            {"id": "bank", "label": "Bank transfer", "type": "offline", "instructions": "", "enabled": False},
             {"id": "zelle", "label": "Zelle", "type": "offline", "instructions": "", "enabled": True},
         ]
         h.configure(paymentMethods=methods)
         session = h.create_session()
         shown = [m["id"] for m in h.client.get(f"/api/public/sessions/{session['id']}").json()["paymentMethods"]]
         assert shown == ["zelle"]
-        assert h.complete(session["id"], "cod").status_code == 400
+        assert h.complete(session["id"], "bank").status_code == 400
 
 
 class TestPlacingOrders:
     def test_offline_payment_leaves_order_pending_with_instructions(self, h):
         session = h.create_session(external_ref="cart_9")
-        r = h.complete(session["id"], "interac")
+        r = h.complete(session["id"], "zelle")
         body = r.json()
         assert r.status_code == 200 and body["order_number"] == 1001 and body["payment_status"] == "pending"
         assert "Order #1001" in body["payment_instructions"]
@@ -119,7 +119,7 @@ class TestPlacingOrders:
 
     def test_success_url_keeps_existing_query_string(self, h):
         session = h.create_session(success_url="https://shop.test/thanks?lang=fr")
-        url = h.complete(session["id"], "cod").json()["success_url"]
+        url = h.complete(session["id"], "bank").json()["success_url"]
         assert "lang=fr" in url and "order=1001" in url
 
     def test_validation_messages_are_friendly(self, h):

@@ -51,6 +51,7 @@ Python
 ```python
 import hashlib, hmac, time
 
+
 def verify(secret: str, timestamp: str, raw_body: bytes, signature: str) -> bool:
     if abs(time.time() - int(timestamp)) > 300:
         return False
