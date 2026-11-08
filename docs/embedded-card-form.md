@@ -105,8 +105,8 @@ A runnable version with a fake tokenizer is in [`examples/embedded_card_form.htm
 - Verify `event.origin` and use an explicit `targetOrigin`.
 - 3-D Secure / extra authentication is not supported yet: the charge endpoint should answer `declined` (or run the
   authentication inside the card form before returning the token, if the processor supports that).
-- Before going live the client's processor must approve taking payments through the checkout's domain — get that in
-  writing. See the going-live checklist in [client-payment-api.md](client-payment-api.md).
+- If the client's processor doesn't know about the checkout's domain, payments can be flagged. See the going-live
+  checklist in [client-payment-api.md](client-payment-api.md).
 
 ## Changing processor later
 

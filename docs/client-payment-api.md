@@ -121,12 +121,6 @@ Always JSON.
 
 ## Going live checklist
 
-- [ ] The client's processor has approved processing for this business **through this checkout page and domain**
-      (get it in writing). Processing for a site or product the processor hasn't approved can get the merchant account
-      terminated and the funds held.
 - [ ] Your endpoint is https, verifies signature + timestamp, and is idempotent.
 - [ ] The signing secret is stored as a secret on your server (never in browser code) and rotated if it leaks
       (Settings → Card payments → Rotate, then update your server).
-- [ ] The processor's hosted-fields SDK is wired into the checkout (`frontend/checkout/card/`), and tested with the
-      processor's test cards in their sandbox.
-- [ ] Chargebacks, refunds and receipts are handled by the merchant's own process.

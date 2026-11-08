@@ -138,8 +138,8 @@ Two ways to show the card step, chosen per client in the admin (both use the sam
 What ships: the whole flow, the signed/idempotent client API contract, and a **test provider** (fake fields, fake token).
 What is still needed for real payments: one small file in `frontend/checkout/card/` wrapping the client's processor's
 hosted-fields SDK (Stripe Elements, Authorize.net Accept.js, NMI Collect.js …) — it depends on which processor the client uses.
-**Raw card numbers are never accepted by this server.** Before going live the processor must approve processing through this
-checkout page/domain for the client's business — get that in writing.
+**Raw card numbers are never accepted by this server.** If the processor doesn't know about this checkout domain,
+payments from it can be flagged.
 
 ## Webhooks
 

@@ -14,7 +14,7 @@ export async function loadSettings() {
   const base = cfg.publicUrl.replace(/\/$/, '');
 
   root.innerHTML = `
-    <div class="card"><div class="card-head"><div><h2>Connect your store</h2><p class="sub" style="margin:0">Use this key from your store's <b>server</b> — never in browser code.</p></div>
+    <div class="card"><div class="card-head"><div><h2>Connect your store</h2><p class="sub" style="margin:0">API key for server-to-server calls. Not for browser code.</p></div>
       <button class="primary" data-role="test-checkout">${icon('package')} Create test checkout</button></div>
       <label>API key</label>
       <div class="secret"><div class="mono" data-role="api-key">${MASK}</div><button data-role="show-key">Show</button><button class="danger" data-role="rotate-key">Rotate</button></div>
@@ -23,7 +23,7 @@ export async function loadSettings() {
       <pre class="mono">curl -X POST ${esc(base)}/api/v1/checkout/sessions \\
   -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" \\
   -d '{"items":[{"name":"Shirt","unit_amount":2500,"quantity":2}],"success_url":"https://yourstore.com/thanks","cancel_url":"https://yourstore.com/cart","external_ref":"cart_123"}'</pre>
-      <p class="muted" style="font-size:13.5px;margin-top:10px">The response contains <code>checkout_url</code> — redirect the customer there. Amounts are in minor units (cents). See the README for the full API.</p>
+      <p class="muted" style="font-size:13.5px;margin-top:10px">The response contains <code>checkout_url</code>, the page the customer is sent to. Amounts are in minor units (cents).</p>
     </div>
 
     <div class="card"><h2>Branding</h2><p class="sub">Make the customer checkout page match your storefront.</p>
@@ -54,23 +54,23 @@ export async function loadSettings() {
       <p class="muted" style="font-size:13px">This service must be reachable at a public <b>https</b> address for shoppers (not <code>localhost</code>): set <code>PUBLIC_URL</code>. Shopify's own checkout stays reachable at <code>/checkout</code> for anyone who types it directly.</p>
     </div>
 
-    <div class="card"><h2>Card payments</h2><p class="sub">Customers enter their card in the processor's own secure fields on your checkout; the charge is made by the <b>client's API</b> with the client's processor. Card numbers never reach this server.</p>
+    <div class="card"><h2>Card payments</h2><p class="sub">Card payments are processed by the client's own processor through the client's API. Card numbers never reach this server.</p>
       <div class="grid2">
-        <label>Card fields provider <span class="muted">(the processor's field SDK)</span>
+        <label>Card provider
           <select data-field="cardProvider">
             <option value="" ${cfg.cardProvider ? '' : 'selected'}>Not set up</option>
-            <option value="embed" ${cfg.cardProvider === 'embed' ? 'selected' : ''}>Client-hosted card form (embedded — works with any processor)</option>
+            <option value="embed" ${cfg.cardProvider === 'embed' ? 'selected' : ''}>Client-hosted card form (embedded)</option>
             <option value="redirect" ${cfg.cardProvider === 'redirect' ? 'selected' : ''}>Redirect to the client's payment page</option>
-            <option value="mock" ${cfg.cardProvider === 'mock' ? 'selected' : ''}>Test provider (fake fields — testing only)</option>
+            <option value="mock" ${cfg.cardProvider === 'mock' ? 'selected' : ''}>Test provider (testing only)</option>
           </select></label>
-        <label>Processor publishable key <span class="muted">(only for built-in providers)</span><input data-field="cardPublicKey" autocomplete="off" placeholder="pk_live_…" value="${esc(cfg.cardPublicKey)}"></label>
+        <label>Processor publishable key <span class="muted">(built-in providers only)</span><input data-field="cardPublicKey" autocomplete="off" placeholder="pk_live_…" value="${esc(cfg.cardPublicKey)}"></label>
       </div>
-      <label>Client's card form URL <span class="muted">(https — only for “Client-hosted card form”; see docs/embedded-card-form.md)</span><input data-field="cardFormUrl" placeholder="https://client-store.com/card-form" value="${esc(cfg.cardFormUrl)}"></label>
-      <label>Client's charge API URL <span class="muted">(https — the endpoint their team builds; see docs/client-payment-api.md)</span><input data-field="clientApiUrl" placeholder="https://client-store.com/api/checkout/charge" value="${esc(cfg.clientApiUrl)}"></label>
-      <label>Signing secret <span class="muted">(give this to the client's team: every request we send is signed with it)</span></label>
+      <label>Client's card form URL <span class="muted">(https, embedded form only)</span><input data-field="cardFormUrl" placeholder="https://client-store.com/card-form" value="${esc(cfg.cardFormUrl)}"></label>
+      <label>Client's API endpoint URL <span class="muted">(https)</span><input data-field="clientApiUrl" placeholder="https://client-store.com/api/checkout/charge" value="${esc(cfg.clientApiUrl)}"></label>
+      <label>Signing secret <span class="muted">(signs every request sent to the client's API)</span></label>
       <div class="secret"><div class="mono" data-role="client-secret">${MASK}</div><button data-role="show-client-secret">Show</button><button class="danger" data-role="rotate-client-secret">Rotate</button></div>
       <div class="row" style="margin-top:14px"><button class="primary" data-role="test-card">Save &amp; test client API</button><button data-role="add-card-method">${icon('plus')} Add "Credit card" payment method</button><span class="msg" data-role="card-msg"></span></div>
-      <p class="muted" style="font-size:13px;margin-top:12px">The card option only appears at checkout once a provider and the client's API URL are set <i>and</i> a payment method of type <b>Card</b> exists below. Before taking real payments, the client's processor must approve this checkout page and domain — get that in writing.</p>
+      <p class="muted" style="font-size:13px;margin-top:12px">The card option appears at checkout once a provider and the client's API endpoint URL are set and a payment method of type <b>Card</b> exists below. Redirect payments stay Pending until the client's server marks them paid.</p>
     </div>
 
     <div class="card"><h2>Store &amp; checkout</h2><p class="sub">Defaults applied to every checkout.</p>
