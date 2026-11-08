@@ -1,7 +1,7 @@
 // Admin entry point: sign-in, tab navigation, theme and view dispatch.
 import { api, isSignedIn, login, logout, setUnauthorizedHandler } from './api.js';
 import { state } from './state.js';
-import { $, $$, hydrateIcons } from './util.js';
+import { $, $$, applyBrand, hydrateIcons } from './util.js';
 import { loadEmail } from './views/email.js';
 import { ORDER_TABS, initOrdersView, loadOrders } from './views/orders.js';
 import { loadRevenue } from './views/revenue.js';
@@ -46,11 +46,9 @@ const setMenu = (open) => {
 // ---------------------------------------------------------------- navigation
 async function loadBrand() {
   try {
-    const { storeName } = await api('/settings');
-    $('#brand').textContent = storeName;
-    const letter = storeName.trim()[0]?.toUpperCase() || 'C';
-    $('#logo').textContent = letter;
-    $('#login-logo').textContent = letter;
+    const { storeName, logoUrl } = await api('/settings');
+    applyBrand(storeName, logoUrl ?? '');
+    $('#login-logo').textContent = storeName.trim()[0]?.toUpperCase() || 'C';
   } catch { /* the sign-in handler deals with auth errors */ }
 }
 

@@ -266,3 +266,9 @@ ol.steps .secret { margin-top: 8px; }
   .drawer-head, .drawer-body { padding-left: 18px; padding-right: 18px; }
   .page-head h1 { font-size: 23px; }
 }
+
+/* sidebar logo image (when a logo URL is set in Settings → Branding) */
+.logo img { display: block; height: 34px; width: auto; max-width: 100%; }
+.brand-row.has-logo { flex-direction: column; align-items: flex-start; gap: 8px; }
+.brand-row.has-logo .logo { width: auto; height: auto; background: #fff; border: 1px solid var(--line); padding: 6px 10px; }
+.brand-row.has-logo .brand-text b { display: none; }

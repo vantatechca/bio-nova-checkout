@@ -61,3 +61,20 @@ export const TZ_OFFSET = new Date().getTimezoneOffset();
 
 export const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'completed', 'cancelled', 'refunded'];
 export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
+
+/** Shows the store name and, when a logo URL is set, the logo image in the sidebar (otherwise the first letter). */
+export function applyBrand(name, logoUrl = '') {
+  const mark = $('#logo');
+  const url = /^https?:\/\//i.test(logoUrl.trim()) ? logoUrl.trim() : '';
+  $('#brand').textContent = name;
+  mark.closest('.brand-row').classList.toggle('has-logo', Boolean(url));
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = name;
+    img.referrerPolicy = 'no-referrer';
+    mark.replaceChildren(img);
+  } else {
+    mark.textContent = name.trim()[0]?.toUpperCase() || 'C';
+  }
+}

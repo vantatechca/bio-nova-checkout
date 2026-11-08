@@ -1,7 +1,7 @@
 import { icon } from '/static/shared/icons.js';
 import { api } from '../api.js';
 import { refreshCounts } from '../counts.js';
-import { $, $$, badge, esc, flash, formatDate } from '../util.js';
+import { $, $$, applyBrand, badge, esc, flash, formatDate } from '../util.js';
 
 const MASK = '•'.repeat(24);
 
@@ -212,8 +212,7 @@ export async function loadSettings() {
       },
     });
     const name = field('storeName').value || 'Orders';
-    $('#brand').textContent = name;
-    $('#logo').textContent = name.trim()[0]?.toUpperCase() || 'C';
+    applyBrand(name, field('logoUrl').value);
   };
   $('[data-role=save]', root).addEventListener('click', async () => {
     const message = $('[data-role=save-msg]', root);
