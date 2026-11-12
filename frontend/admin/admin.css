@@ -50,8 +50,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 6px 32px 56px; }
 
 .brand-row { display: flex; align-items: center; gap: 12px; padding: 4px 10px 22px; }
 .logo { width: 40px; height: 40px; border-radius: var(--r-md); background: var(--grad); color: #fff; display: grid; place-items: center; font-weight: 900; font-size: 18px; flex: none; }
-.logo.big.has-img { display: block; width: auto; height: auto; background: none; border-radius: 0; }
-.logo.big img { display: block; height: 52px; width: auto; max-width: 240px; }
+.logo.big.has-img { display: block; width: auto; height: auto; background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 16px; }
+.logo.big img { display: block; height: 40px; width: auto; max-width: 220px; }
 .logo.big { width: 52px; height: 52px; font-size: 22px; border-radius: var(--r-lg); margin-bottom: 22px; }
 .brand-text b { display: block; font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 0; line-height: 1.2; }
 .brand-text small { color: var(--text-3); font-size: 12px; font-weight: 550; }
