@@ -49,11 +49,29 @@ const setMenu = (open) => {
 const selectedStore = () => state.stores.find((x) => x.id === state.store) ?? null;
 
 /** The sidebar brand is the first active store; the orders/revenue/visits filter does not change it. */
+/** The sign-in page shows the store's logo too; it needs no login, so this reads the public brand. */
+async function loadLoginBrand() {
+  try {
+    const brand = await (await fetch('/api/public/brand')).json();
+    const mark = $('#login-logo');
+    const url = /^https?:\/\//i.test(brand.logo_url ?? '') ? brand.logo_url.trim() : '';
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = brand.name;
+      img.referrerPolicy = 'no-referrer';
+      mark.classList.add('has-img');
+      mark.replaceChildren(img);
+    } else {
+      mark.textContent = brand.name.trim()[0]?.toUpperCase() || 'C';
+    }
+  } catch { /* keep the default mark */ }
+}
+
 function showBrand() {
   const store = state.stores.find((x) => x.active) ?? state.stores[0];
   if (!store) return;
   applyBrand(store.name, store.logo_url ?? '');
-  $('#login-logo').textContent = store.name.trim()[0]?.toUpperCase() || 'C';
 }
 
 /** Re-reads the store list (after adding / disabling / deleting one) and refreshes the switcher and brand. */
@@ -126,4 +144,5 @@ bindStoreHooks({
   open: (id) => { state.settingsStore = id; navigate('settings'); },
 });
 
+loadLoginBrand();
 render();

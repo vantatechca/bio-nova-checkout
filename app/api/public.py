@@ -14,6 +14,13 @@ from app.services.visits import VisitContext, record_visit
 router = APIRouter(prefix="/api/public", tags=["checkout page"])
 
 
+@router.get("/brand")
+def brand(config: Config):
+    """Name and logo of the default store, so the admin sign-in page can show them before anyone is signed in."""
+    store = config.default_store
+    return {"name": store.name, "logo_url": store.settings.logo_url}
+
+
 @router.get("/sessions/{session_id}", response_model=PublicSessionOut, response_model_by_alias=True)
 def view_session(session_id: str, request: Request, db: DbSession, config: Config, ref: str = ""):
     session = checkout.get_session(db, session_id)

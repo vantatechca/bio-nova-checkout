@@ -481,3 +481,13 @@ class TestMigration:
         finally:
             command.upgrade(cfg, "head")
             config_service.invalidate()
+
+
+class TestPublicBrand:
+    def test_the_sign_in_page_can_read_the_default_stores_name_and_logo_without_logging_in(self, h):
+        h.client.put(
+            "/api/admin/settings", headers=h.admin, json={"storeName": "Bionova", "logoUrl": "https://b.example/l.png"}
+        )
+        r = h.client.get("/api/public/brand")
+        assert r.status_code == 200
+        assert r.json() == {"name": "Bionova", "logo_url": "https://b.example/l.png"}
