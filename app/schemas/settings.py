@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.common import CamelModel, Text40, Text80, Text100, Text200, Text300, Text500, Text1000, Text2000
 
-DEFAULT_ZELLE = (
-    'Send {total} via Zelle to payments@yourstore.com and put "Order #{order}" in the memo. '
+DEFAULT_BANK = (
+    'Send {total} by bank transfer and put "Order #{order}" as the reference. '
     "We mark your order paid as soon as it arrives."
 )
 
@@ -36,8 +36,7 @@ class PaymentMethod(CamelModel):
 
 def default_payment_methods() -> list[PaymentMethod]:
     return [
-        PaymentMethod(id="bank", label="Bank transfer", instructions="We will email you the bank details."),
-        PaymentMethod(id="zelle", label="Zelle", instructions=DEFAULT_ZELLE),
+        PaymentMethod(id="bank", label="Bank transfer", instructions=DEFAULT_BANK),
         PaymentMethod(
             id="test",
             label="Test payment (no real charge)",

@@ -322,13 +322,11 @@ class TestCardOnlyCheckout:
     def test_when_the_other_methods_are_disabled_card_is_the_only_option(self, h, card):
         offline = [
             {**BANK_METHOD, "enabled": False},
-            {"id": "zelle", "label": "Zelle", "type": "offline", "instructions": "", "enabled": False},
         ]
         h.configure(paymentMethods=[CARD_METHOD, *offline])
         session_id = h.create_session()["id"]
         assert [m["id"] for m in public_view(h, session_id)["paymentMethods"]] == ["card"]
-        assert h.complete(session_id, "zelle").status_code == 400  # a disabled method can't be forced through
-        assert h.complete(session_id, "bank").status_code == 400
+        assert h.complete(session_id, "bank").status_code == 400  # a disabled method can't be forced through
         assert h.sql("SELECT COUNT(*) FROM orders")[0][0] == 0
         assert pay(h, session_id).status_code == 200
 

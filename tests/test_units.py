@@ -68,7 +68,7 @@ def test_local_day_helpers_follow_js_timezone_offsets():
 
 def test_payment_gateways():
     request = PaymentRequest(store=StoreSettings(), customer=CustomerIn(), address=AddressIn())
-    assert process_payment(PaymentMethod(id="zelle", type="offline"), None, request).status == "pending"
+    assert process_payment(PaymentMethod(id="bank", type="offline"), None, request).status == "pending"
     assert process_payment(PaymentMethod(id="t", type="test"), None, request).status == "paid"
 
 
@@ -103,8 +103,8 @@ def _order(**overrides) -> Order:
         "session_id": "cs_x",
         "status": "pending",
         "payment_status": "pending",
-        "payment_method_id": "zelle",
-        "payment_method_label": "Zelle",
+        "payment_method_id": "bank",
+        "payment_method_label": "Bank transfer",
         "payment_instructions": "Send $50.00 ...",
         "payment_reference": "",
         "currency": "USD",

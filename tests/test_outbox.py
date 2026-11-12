@@ -7,23 +7,23 @@ import json
 
 class TestEmails:
     def test_without_smtp_emails_are_logged_as_skipped(self, h):
-        h.place_order("zelle")
+        h.place_order("bank")
         rows = h.sql("SELECT status, error FROM email_log")
         assert rows and all(r[0] == "skipped" and r[1] == "SMTP not configured" for r in rows)
         assert h.run_worker() == 0
 
     def test_confirmation_with_payment_instructions_is_sent(self, h, smtp_server):
         h.configure_smtp(smtp_server)
-        h.place_order("zelle")
+        h.place_order("bank")
         assert h.run_worker() == 1
         mail = smtp_server.mails[0]
         assert mail.recipients == ["ada@example.com"] and mail.sender == "orders@shop.test"
         assert mail.subject == "Order #1001 received - My Store"
-        assert "Zelle" in mail.body and "Order #1001" in mail.body and "$50.00" in mail.body
+        assert "by bank transfer" in mail.body and "Order #1001" in mail.body and "$50.00" in mail.body
 
     def test_paid_shipped_and_cancelled_emails(self, h, smtp_server):
         h.configure_smtp(smtp_server)
-        number = h.place_order("zelle")["number"]
+        number = h.place_order("bank")["number"]
         h.update_order(number, payment_status="paid", payment_reference="CONF9")
         h.update_order(number, status="shipped", tracking_number="TRK1")
         h.update_order(number, status="cancelled")
@@ -99,7 +99,7 @@ class TestWebhooks:
 
     def test_marking_paid_fires_updated_and_paid_events(self, h, webhook_receiver):
         h.configure(webhookUrl=webhook_receiver.url)
-        number = h.place_order("zelle")["number"]
+        number = h.place_order("bank")["number"]
         h.run_worker()
         webhook_receiver.received.clear()
         h.update_order(number, payment_status="paid")

@@ -156,7 +156,7 @@ function drawerHtml(o) {
       <div class="callout"><span class="ci" data-icon="clock"></span><div class="grow">
         <b>Awaiting payment — ${esc(o.payment_method.label)}</b>
         <p style="margin:4px 0 14px">Expecting ${money(o.total, o.currency)}. Once the transfer lands, record it here.</p>
-        <label>Payment reference <span class="muted">(e.g. Zelle confirmation #)</span><input data-role="payment-ref" value="${esc(o.payment_reference)}"></label>
+        <label>Payment reference <span class="muted">(e.g. the processor's transaction id)</span><input data-role="payment-ref" value="${esc(o.payment_reference)}"></label>
         <label class="inline"><input type="checkbox" class="switch" data-role="receipt" checked> Email the customer a payment receipt</label>
         <div class="row" style="margin-top:8px"><button class="success" data-role="mark-paid">Mark as paid</button><span class="msg" data-role="paid-msg"></span></div>
       </div></div>` : ''}

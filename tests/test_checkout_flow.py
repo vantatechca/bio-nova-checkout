@@ -82,8 +82,8 @@ class TestCustomerPage:
         body = r.json()
         assert r.headers["access-control-allow-origin"] == "*"
         assert body["storeName"] == "My Store" and body["total"] == 5000
-        zelle = next(m for m in body["paymentMethods"] if m["id"] == "zelle")
-        assert "$50.00" in zelle["instructions"] and "{total}" not in zelle["instructions"]
+        bank = next(m for m in body["paymentMethods"] if m["id"] == "bank")
+        assert "$50.00" in bank["instructions"] and "{total}" not in bank["instructions"]
         assert "apiKey" not in r.text and "webhookSecret" not in r.text
 
     def test_unknown_session_is_404(self, client):
@@ -92,19 +92,19 @@ class TestCustomerPage:
     def test_disabled_payment_methods_are_hidden_and_rejected(self, h):
         methods = [
             {"id": "bank", "label": "Bank transfer", "type": "offline", "instructions": "", "enabled": False},
-            {"id": "zelle", "label": "Zelle", "type": "offline", "instructions": "", "enabled": True},
+            {"id": "manual", "label": "Manual", "type": "offline", "instructions": "", "enabled": True},
         ]
         h.configure(paymentMethods=methods)
         session = h.create_session()
         shown = [m["id"] for m in h.client.get(f"/api/public/sessions/{session['id']}").json()["paymentMethods"]]
-        assert shown == ["zelle"]
+        assert shown == ["manual"]
         assert h.complete(session["id"], "bank").status_code == 400
 
 
 class TestPlacingOrders:
     def test_offline_payment_leaves_order_pending_with_instructions(self, h):
         session = h.create_session(external_ref="cart_9")
-        r = h.complete(session["id"], "zelle")
+        r = h.complete(session["id"], "bank")
         body = r.json()
         assert r.status_code == 200 and body["order_number"] == 1001 and body["payment_status"] == "pending"
         assert "Order #1001" in body["payment_instructions"]
@@ -162,7 +162,7 @@ class TestPlacingOrders:
 
     def test_page_shows_completed_state_after_ordering(self, h):
         sid = h.create_session()["id"]
-        h.complete(sid, "zelle")
+        h.complete(sid, "bank")
         view = h.client.get(f"/api/public/sessions/{sid}").json()
         assert view["status"] == "complete" and view["order_number"] == 1001
         assert view["payment_status"] == "pending" and "Order #1001" in view["payment_instructions"]

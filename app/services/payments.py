@@ -57,7 +57,7 @@ class PaymentGateway(Protocol):
 
 
 class OfflineGateway:
-    """Zelle, bank transfer: an admin marks the order paid by hand."""
+    """Bank transfer and similar manual methods: an admin marks the order paid by hand."""
 
     def process(self, method: PaymentMethod, session: CheckoutSession, request: PaymentRequest) -> PaymentResult:
         return PaymentResult(PaymentStatus.PENDING)

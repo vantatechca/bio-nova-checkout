@@ -149,7 +149,7 @@ function wireSummaryToggle() {
 }
 
 // ---------------------------------------------------------------- payment options
-const PAYMENT_ICONS = { zelle: 'transfer', bank: 'bank', test: 'flask', card: 'card' };
+const PAYMENT_ICONS = { bank: 'bank', test: 'flask', card: 'card' };
 function paymentMethodsHtml() {
   if (!session.paymentMethods.length) return '<p class="error">No payment methods are available right now.</p>';
   const [only] = session.paymentMethods;
@@ -351,7 +351,7 @@ function showConfirmation(orderNumber, successUrl, paymentInstructions) {
       setTimeout(() => { button.classList.remove('copied'); button.innerHTML = `${icon('copy')} Copy`; }, 1800);
     }));
 
-  // Payment still owed (Zelle, ...): stay on this page so the customer can read the instructions.
+  // Payment still owed (bank transfer, ...): stay on this page so the customer can read the instructions.
   if (url && !owing) setTimeout(() => { location.href = url; }, 3500);
 }
 

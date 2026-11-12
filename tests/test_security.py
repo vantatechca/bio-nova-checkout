@@ -88,11 +88,11 @@ class TestSettings:
         h.configure(storeName="Acme")
         h.configure(shippingFlat=250)
         s = h.client.get("/api/admin/settings", headers=h.admin).json()
-        assert s["storeName"] == "Acme" and s["shippingFlat"] == 250 and len(s["paymentMethods"]) == 3
+        assert s["storeName"] == "Acme" and s["shippingFlat"] == 250 and len(s["paymentMethods"]) == 2
 
-    def test_default_payment_methods_include_zelle(self, h):
+    def test_default_payment_methods(self, h):
         methods = h.client.get("/api/admin/settings", headers=h.admin).json()["paymentMethods"]
-        assert [m["id"] for m in methods] == ["bank", "zelle", "test"]
+        assert [m["id"] for m in methods] == ["bank", "test"]
 
     def test_new_payment_methods_get_ids_and_labels(self, h):
         h.configure(

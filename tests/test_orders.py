@@ -5,7 +5,7 @@ class TestAdminTabs:
     def test_orders_land_in_the_right_tab(self, h):
         pending = h.place_order("bank")["number"]
         paid = h.place_order("test")["number"]
-        cancelled = h.place_order("zelle")["number"]
+        cancelled = h.place_order("bank")["number"]
         h.update_order(cancelled, status="cancelled", notify=False)
         failed_payment = h.place_order("bank")["number"]
         h.update_order(failed_payment, payment_status="failed")

@@ -11,7 +11,7 @@ import { loadVisits } from './views/visits.js';
 const VIEWS = ['orders', 'revenue', 'email', 'visits', 'settings'];
 const LOADERS = { revenue: loadRevenue, email: loadEmail, visits: loadVisits, settings: loadSettings };
 const TITLES = {
-  pending: ['Pending orders', 'Awaiting payment. Zelle and bank orders stay here until you mark them paid.'],
+  pending: ['Pending orders', 'Awaiting payment. Orders stay here until their payment is confirmed.'],
   paid: ['Paid orders', 'Orders with payment received.'],
   failed: ['Failed & cancelled', 'Cancelled orders, failed payments and refunds.'],
   revenue: ['Revenue', 'Money in, by day and by payment method.'],

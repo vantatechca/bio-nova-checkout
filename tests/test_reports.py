@@ -14,7 +14,7 @@ class TestRevenue:
         h.place_order("test")
         paid_bank = h.place_order("bank")["number"]
         h.update_order(paid_bank, payment_status="paid")
-        h.place_order("zelle")  # still awaiting payment
+        h.place_order("bank")  # still awaiting payment
         r = h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 7}).json()
         assert (r["today"], r["last7"], r["last30"], r["all_time"]) == (10000, 10000, 10000, 10000)
         assert (r["period_total"], r["period_orders"], r["avg_order"]) == (10000, 2, 5000)

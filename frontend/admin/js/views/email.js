@@ -5,7 +5,7 @@ import { refreshCounts } from '../counts.js';
 import { $, $$, avatar, badge, esc, flash, formatDate } from '../util.js';
 
 const NOTIFICATIONS = [
-  ['confirmation', 'Order confirmation', 'Includes Zelle instructions when payment is owed'],
+  ['confirmation', 'Order confirmation', 'Includes payment instructions when payment is owed'],
   ['paid', 'Payment received', 'Sent when you mark an order paid'],
   ['shipped', 'Order shipped', 'Includes the tracking number'],
   ['cancelled', 'Order cancelled', 'Lets the customer know right away'],
