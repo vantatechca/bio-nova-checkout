@@ -220,11 +220,10 @@ export async function loadSettings() {
       },
     });
     const name = field('storeName').value || 'Orders';
-    applyBrand(name, field('logoUrl').value);
     const known = state.stores.find((x) => x.id === cfg.storeId);
     if (known) { known.name = name; known.logo_url = field('logoUrl').value; }
-    const option = [...document.querySelectorAll('#store-switch option')].find((o) => o.value === String(cfg.storeId));
-    if (option) option.textContent = name;
+    const brandStore = state.stores.find((x) => x.active) ?? state.stores[0];
+    if (!brandStore || brandStore.id === cfg.storeId) applyBrand(name, field('logoUrl').value);
   };
   $('[data-role=save]', root).addEventListener('click', async () => {
     const message = $('[data-role=save-msg]', root);

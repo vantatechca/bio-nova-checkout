@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { barChart, rangeSelect, stat } from '../components.js';
+import { barChart, bindStoreFilter, rangeSelect, stat } from '../components.js';
 import { refreshCounts } from '../counts.js';
 import { state } from '../state.js';
 import { $, TZ_OFFSET, esc, money } from '../util.js';
@@ -35,6 +35,8 @@ export async function loadRevenue() {
     <div class="card"><h2>By payment method</h2><p class="sub">All time</p>${methods}</div>
     <p class="muted" style="font-size:13px">Shown in ${esc(r.currency)}${r.excluded_other_currency ? ` (${r.excluded_other_currency} order(s) in other currencies excluded)` : ''}. Refunded orders are excluded.</p>`;
 
+  const storeSelect = $('[data-role=store-filter]', root);
+  if (storeSelect) bindStoreFilter(storeSelect, loadRevenue);
   $('[data-role=range]', root).addEventListener('change', (e) => {
     state.rangeDays = Number(e.target.value);
     loadRevenue();

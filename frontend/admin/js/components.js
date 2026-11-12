@@ -8,11 +8,36 @@ export function stat(label, value, sub = '', iconName = 'receipt', tone = '') {
   return `<div class="stat ${tone ? `tone-${tone}` : ''}"><div class="chip-ico">${icon(iconName)}</div><small>${label}</small><b>${value}</b>${sub ? `<i>${sub}</i>` : ''}</div>`;
 }
 
+/** Options for a store filter; empty string = all stores. Hidden by callers when there is only one store. */
+export function storeFilterOptions() {
+  const all = '<option value="">All stores</option>';
+  const rows = state.stores.map((s) => `<option value="${s.id}" ${s.id === state.store ? 'selected' : ''}>${esc(s.name)}${s.active ? '' : ' (disabled)'}</option>`);
+  return all + rows.join('');
+}
+
+/** Keeps a store filter <select> in sync with state and calls `reload` when it changes. */
+export function bindStoreFilter(select, reload) {
+  select.classList.toggle('hide', state.stores.length < 2);
+  select.innerHTML = storeFilterOptions();
+  select.value = state.store === null ? '' : String(state.store);
+  select.onchange = () => {
+    state.store = select.value ? Number(select.value) : null;
+    try {
+      if (state.store === null) localStorage.removeItem('checkout-store');
+      else localStorage.setItem('checkout-store', String(state.store));
+    } catch { /* storage unavailable */ }
+    reload();
+  };
+}
+
 export function rangeSelect() {
   const options = [7, 30, 90]
     .map((d) => `<option value="${d}" ${d === state.rangeDays ? 'selected' : ''}>Last ${d} days</option>`)
     .join('');
-  return `<div class="toolbar-range"><select data-role="range" aria-label="Date range">${options}</select></div>`;
+  const stores = state.stores.length > 1
+    ? `<select data-role="store-filter" aria-label="Filter by store">${storeFilterOptions()}</select>`
+    : '';
+  return `<div class="toolbar-range">${stores}<select data-role="range" aria-label="Date range">${options}</select></div>`;
 }
 
 /** Bar chart of `key` over `data` (each item has a `date`). `format` renders values for the tooltip. */

@@ -42,7 +42,7 @@ One deployment can serve any number of stores. **Admin → Stores → Add a stor
   defaults, allowed redirect domains and webhooks. Edit them once and every store uses them; each webhook payload carries
   `data.store_id` so the receiver can tell stores apart. The client therefore needs one payment endpoint and one signing
   secret.
-- The **store switcher** in the sidebar filters orders, revenue and visits to one store (or *All stores*). *Settings & API*
+- The **store filter** at the top of the Pending, Paid, Failed, Revenue and Visits tabs filters orders, revenue and visits to one store (or *All stores*). *Settings & API*
   has its own "Editing settings for" store dropdown (only the per-store sections change with it).
 - **Copy branding from…** when adding a store starts it with another store's logo, menu links and notice.
 - Disabling a store stops its API key and Shopify button working; stores that have orders can be disabled but not deleted.

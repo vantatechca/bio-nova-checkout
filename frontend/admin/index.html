@@ -37,9 +37,6 @@
         <div class="brand-text"><b id="brand">Orders</b><small>Order admin</small></div>
       </div>
 
-      <label class="store-switch hide" id="store-switch-wrap">Store
-        <select id="store-switch" aria-label="Switch store"></select>
-      </label>
 
       <nav id="nav" aria-label="Main">
         <p class="nav-label">Orders</p>
@@ -75,6 +72,7 @@
           <div class="card flush">
             <div class="toolbar">
               <div class="search-box"><span data-icon="search"></span><input id="search" type="search" placeholder="Search order #, name, email, reference…" aria-label="Search orders"></div>
+              <select id="store-filter" class="hide" aria-label="Filter by store"></select>
               <select id="status-filter" aria-label="Filter by status"><option value="">All statuses</option></select>
               <button id="refresh" class="icon-only" aria-label="Refresh" title="Refresh"><span data-icon="refresh"></span></button>
             </div>

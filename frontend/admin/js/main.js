@@ -47,21 +47,13 @@ const setMenu = (open) => {
 
 // ---------------------------------------------------------------- navigation
 const selectedStore = () => state.stores.find((x) => x.id === state.store) ?? null;
-const showingAll = () => state.store === null && state.stores.length > 1;
 
+/** The sidebar brand is the first active store; the orders/revenue/visits filter does not change it. */
 function showBrand() {
-  const store = selectedStore() ?? state.stores.find((x) => x.active) ?? state.stores[0];
+  const store = state.stores.find((x) => x.active) ?? state.stores[0];
   if (!store) return;
-  applyBrand(showingAll() ? 'All stores' : store.name, showingAll() ? '' : store.logo_url ?? '');
+  applyBrand(store.name, store.logo_url ?? '');
   $('#login-logo').textContent = store.name.trim()[0]?.toUpperCase() || 'C';
-}
-
-function renderSwitcher() {
-  $('#store-switch-wrap').classList.toggle('hide', state.stores.length < 2);
-  const select = $('#store-switch');
-  select.replaceChildren(new Option('All stores', ''));
-  for (const store of state.stores) select.append(new Option(store.name + (store.active ? '' : ' (disabled)'), String(store.id)));
-  select.value = state.store === null ? '' : String(state.store);
 }
 
 /** Re-reads the store list (after adding / disabling / deleting one) and refreshes the switcher and brand. */
@@ -69,17 +61,6 @@ async function reloadStores() {
   state.stores = await api('/stores');
   if (state.store !== null && !selectedStore()) state.store = null;
   if (state.settingsStore !== null && !state.stores.some((x) => x.id === state.settingsStore)) state.settingsStore = null;
-  renderSwitcher();
-  showBrand();
-}
-
-function selectStore(id) {
-  state.store = id;
-  try {
-    if (id === null) localStorage.removeItem('checkout-store');
-    else localStorage.setItem('checkout-store', String(id));
-  } catch { /* storage unavailable */ }
-  renderSwitcher();
   showBrand();
 }
 
@@ -88,7 +69,7 @@ async function loadBrand() {
     await reloadStores();
     let saved = null;
     try { saved = Number(localStorage.getItem('checkout-store')) || null; } catch { /* storage unavailable */ }
-    if (saved && state.stores.some((x) => x.id === saved)) selectStore(saved);
+    if (saved && state.stores.some((x) => x.id === saved)) state.store = saved;
   } catch { /* the sign-in handler deals with auth errors */ }
 }
 
@@ -140,10 +121,6 @@ $('#theme-toggle').addEventListener('click', toggleTheme);
 $('#menu').addEventListener('click', () => setMenu(true));
 $('#scrim').addEventListener('click', () => setMenu(false));
 $$('.tab').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.tab)));
-$('#store-switch').addEventListener('change', (e) => {
-  selectStore(e.target.value ? Number(e.target.value) : null);
-  navigate(state.tab);
-});
 bindStoreHooks({
   reload: reloadStores,
   open: (id) => { state.settingsStore = id; navigate('settings'); },

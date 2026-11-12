@@ -1,6 +1,7 @@
 // Pending / Paid / Failed tabs: order tables, "mark paid" flow and the order details drawer.
 import { icon } from '/static/shared/icons.js';
 import { api } from '../api.js';
+import { bindStoreFilter } from '../components.js';
 import { refreshCounts } from '../counts.js';
 import { state } from '../state.js';
 import { $, $$, ORDER_STATUSES, PAYMENT_STATUSES, avatar, badge, esc, flash, formatDate, hydrateIcons, money } from '../util.js';
@@ -27,6 +28,7 @@ export function initOrdersView() {
 
 export async function loadOrders() {
   const tab = state.tab;
+  bindStoreFilter($('#store-filter'), loadOrders);
   const query = new URLSearchParams({ tab });
   if ($('#search').value.trim()) query.set('q', $('#search').value.trim());
   if ($('#status-filter').value) query.set('status', $('#status-filter').value);

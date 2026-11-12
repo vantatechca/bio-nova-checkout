@@ -274,8 +274,6 @@ ol.steps .secret { margin-top: 8px; }
 .brand-row.has-logo .brand-text b { display: none; }
 
 /* store switcher (shown when more than one store is connected) */
-.store-switch { display: block; margin: 0 6px 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
-.store-switch select { margin: 6px 0 0; width: 100%; font-weight: 700; text-transform: none; letter-spacing: 0; }
 .store-pill { display: inline-block; padding: 2px 8px; border-radius: var(--r-sm); background: var(--sunken); color: var(--text-2); font-size: 12px; font-weight: 700; }
 #view-stores .nm small, #view-stores .order-no small { display: block; }
 

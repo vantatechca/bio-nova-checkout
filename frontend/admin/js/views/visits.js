@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { barChart, meterList, rangeSelect, stat } from '../components.js';
+import { barChart, bindStoreFilter, meterList, rangeSelect, stat } from '../components.js';
 import { refreshCounts } from '../counts.js';
 import { state } from '../state.js';
 import { $, TZ_OFFSET } from '../util.js';
@@ -26,6 +26,8 @@ export async function loadVisits() {
     </div>
     <p class="muted" style="font-size:13px">Views are counted when a customer opens a checkout link (reloads within 10 minutes and bots are ignored). Visitors are counted from a salted hash of IP + browser; no raw IPs are stored. Referrer is the page they came from, when the browser shares it.</p>`;
 
+  const storeSelect = $('[data-role=store-filter]', root);
+  if (storeSelect) bindStoreFilter(storeSelect, loadVisits);
   $('[data-role=range]', root).addEventListener('change', (e) => {
     state.rangeDays = Number(e.target.value);
     loadVisits();
