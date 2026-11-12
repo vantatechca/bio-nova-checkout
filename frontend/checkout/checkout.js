@@ -1,6 +1,7 @@
 // Customer-facing checkout page. Talks only to the public session API.
 import { icon } from '/static/shared/icons.js';
 import { loadProvider } from '/static/checkout/card/index.js';
+import { countries, regionsFor } from '/static/checkout/regions.js';
 
 const app = document.querySelector('#app');
 const sessionId = new URLSearchParams(location.search).get('session');
@@ -243,11 +244,13 @@ function renderForm() {
           <label>Apartment, suite, etc. <span class="hint">(optional)</span><input name="line2" autocomplete="address-line2"></label>
           <div class="row">
             <label><span class="req">City</span><input name="city" autocomplete="address-level2" required></label>
-            <label>State / Province<input name="state" autocomplete="address-level1"></label>
+            <label><span class="req">Country</span><select name="country" autocomplete="country-name" required>
+              <option value="">Select a country</option>${countries().map((c) => `<option>${esc(c)}</option>`).join('')}
+            </select></label>
           </div>
           <div class="row">
+            <label data-role="state-field">State / Province<input name="state" autocomplete="address-level1"></label>
             <label><span class="req">Postal code</span><input name="postal_code" autocomplete="postal-code" required></label>
-            <label><span class="req">Country</span><input name="country" autocomplete="country-name" required></label>
           </div>
         </fieldset>
       </section>
@@ -268,6 +271,22 @@ function renderForm() {
   document.querySelector('#checkout-form').addEventListener('submit', submitOrder);
   wireSummaryToggle();
   wirePaymentMethods();
+  wireRegionPicker();
+}
+
+/** State/province is a list for countries that have one (US, Canada, Australia), a free text box otherwise. */
+function wireRegionPicker() {
+  const form = document.querySelector('#checkout-form');
+  const field = form.querySelector('[data-role="state-field"]');
+  const render = () => {
+    const regions = regionsFor(form.elements.country.value);
+    const previous = form.elements.state?.value ?? '';
+    field.innerHTML = regions
+      ? `<span class="req">State / Province</span><select name="state" autocomplete="address-level1" required>
+           <option value="">Select</option>${regions.map((r) => `<option ${r === previous ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>`
+      : 'State / Province <span class="hint">(optional)</span><input name="state" autocomplete="address-level1">';
+  };
+  form.elements.country.addEventListener('change', render);
 }
 
 async function submitOrder(event) {
@@ -277,6 +296,8 @@ async function submitOrder(event) {
   const button = document.querySelector('#submit');
   const error = document.querySelector('#error');
   error.textContent = '';
+  if (!value('country')) { error.textContent = 'Please select your country.'; form.elements.country.focus(); return; }
+  if (form.elements.state.tagName === 'SELECT' && !value('state')) { error.textContent = 'Please select your state or province.'; form.elements.state.focus(); return; }
   const method = selectedMethod();
   const paying = method?.type === 'card';
   button.disabled = true;
