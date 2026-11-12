@@ -278,3 +278,8 @@ ol.steps .secret { margin-top: 8px; }
 .store-switch select { margin: 6px 0 0; width: 100%; font-weight: 700; text-transform: none; letter-spacing: 0; }
 .store-pill { display: inline-block; padding: 2px 8px; border-radius: var(--r-sm); background: var(--sunken); color: var(--text-2); font-size: 12px; font-weight: 700; }
 #view-stores .nm small, #view-stores .order-no small { display: block; }
+
+/* per-store vs shared setting labels */
+.scope { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: var(--r-sm); font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; vertical-align: middle; }
+.scope.own { background: var(--sunken); color: var(--text-2); }
+.scope.shared { background: #e6f4ea; color: #0f7a3d; }

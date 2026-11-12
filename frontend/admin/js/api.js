@@ -24,7 +24,7 @@ function scoped(path) {
   const matches = (list) => list.some((p) => base === p || base.startsWith(`${p}/`));
   let store = null;
   if (matches(FILTERED)) store = state.store;
-  else if (matches(PER_STORE)) store = state.store ?? state.stores[0]?.id ?? null;
+  else if (matches(PER_STORE)) store = state.settingsStore ?? state.store ?? state.stores[0]?.id ?? null;
   if (store === null) return path;
   return `${path}${path.includes('?') ? '&' : '?'}store=${store}`;
 }

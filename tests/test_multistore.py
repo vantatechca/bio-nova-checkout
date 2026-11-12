@@ -110,42 +110,108 @@ class TestStoresAreSeparate:
         assert r.status_code == 400
 
 
-class TestCopyingSettings:
-    def test_a_copied_store_inherits_card_and_branding_but_not_identity(self, h):
+class TestSharedSettings:
+    """Card/payment, shipping/tax and webhook settings are shared by every store; branding and Shopify are per store."""
+
+    def test_a_shared_setting_edited_on_one_store_applies_to_all(self, h, two):
+        first, second = two
+        h.client.put(
+            f"/api/admin/settings?store={first['id']}",
+            headers=h.admin,
+            json={
+                "shippingFlat": 700,
+                "clientApiUrl": "https://pay.example.com/charge",
+                "cardProvider": "embed",
+                "cardFormUrl": "https://pay.example.com/form",
+            },
+        )
+        a, b = settings_of(h, first["id"]), settings_of(h, second["id"])
+        for field in (
+            "shippingFlat",
+            "clientApiUrl",
+            "cardProvider",
+            "cardFormUrl",
+            "clientApiSecret",
+            "webhookSecret",
+            "paymentMethods",
+        ):
+            assert a[field] == b[field], field
+        assert b["shippingFlat"] == 700
+
+    def test_branding_shopify_and_api_key_stay_per_store(self, h, two):
+        first, second = two
+        h.client.put(
+            f"/api/admin/settings?store={first['id']}",
+            headers=h.admin,
+            json={
+                "storeName": "Alpha",
+                "notice": "A notice",
+                "logoUrl": "https://a.example/l.png",
+                "storeUrl": A_URL,
+                "shopifyDomain": "alpha.myshopify.com",
+                "shopifyStorefrontToken": "tok_a",
+            },
+        )
+        b = settings_of(h, second["id"])
+        assert b["storeName"] == "Beta Shop" and b["notice"] == "" and b["logoUrl"] == ""
+        assert b["storeUrl"] == "" and b["shopifyDomain"] == "" and b["shopifyStorefrontToken"] == ""
+        assert settings_of(h, first["id"])["apiKey"] != b["apiKey"]
+
+    def test_rotating_the_signing_secret_changes_it_for_every_store(self, h, two):
+        first, second = two
+        new = h.client.post(f"/api/admin/card/rotate-secret?store={first['id']}", headers=h.admin).json()[
+            "clientApiSecret"
+        ]
+        assert settings_of(h, second["id"])["clientApiSecret"] == new
+
+    def test_a_new_store_uses_the_shared_settings_straight_away(self, h):
+        h.configure(
+            shippingFlat=900,
+            cardProvider="embed",
+            cardFormUrl="https://pay.example.com/form",
+            clientApiUrl="https://pay.example.com/charge",
+        )
+        new = add_store(h, "Fresh")
+        s = settings_of(h, new["id"])
+        assert s["shippingFlat"] == 900 and s["clientApiUrl"] == "https://pay.example.com/charge"
+
+    def test_copying_a_store_brings_over_its_branding_only(self, h):
         source = h.client.get("/api/admin/stores", headers=h.admin).json()[0]
         h.configure(
             storeName="Source",
             notice="Shared notice",
-            shippingFlat=700,
-            clientApiUrl="https://pay.example.com/charge",
-            cardProvider="embed",
-            cardFormUrl="https://pay.example.com/form",
+            logoUrl="https://s.example/l.png",
             storeUrl=A_URL,
             shopifyDomain="source.myshopify.com",
             shopifyStorefrontToken="tok_source",
-            webhookUrl="https://hooks.example.com/source",
         )
         r = h.client.post("/api/admin/stores", headers=h.admin, json={"name": "Copy", "copy_from": source["id"]})
         assert r.status_code == 201, r.text
-        new, old = settings_of(h, r.json()["id"]), settings_of(h, source["id"])
-
-        for shared in ("notice", "shippingFlat", "clientApiUrl", "cardProvider", "cardFormUrl", "clientApiSecret"):
-            assert new[shared] == old[shared], shared
-        assert new["storeName"] == "Copy"
-        for own in ("apiKey", "webhookSecret"):
-            assert new[own] != old[own], own
-        assert new["shopifyDomain"] == "" and new["shopifyStorefrontToken"] == ""
-        assert new["storeUrl"] == "" and new["webhookUrl"] == ""
-
-    def test_the_source_store_is_left_untouched(self, h):
-        source = h.client.get("/api/admin/stores", headers=h.admin).json()[0]
-        before = settings_of(h, source["id"])
-        h.client.post("/api/admin/stores", headers=h.admin, json={"name": "Copy", "copy_from": source["id"]})
-        assert settings_of(h, source["id"]) == before
+        new = settings_of(h, r.json()["id"])
+        assert new["notice"] == "Shared notice" and new["logoUrl"] == "https://s.example/l.png"
+        assert new["storeName"] == "Copy" and new["apiKey"] != settings_of(h, source["id"])["apiKey"]
+        assert new["storeUrl"] == "" and new["shopifyDomain"] == "" and new["shopifyStorefrontToken"] == ""
 
     def test_copying_from_an_unknown_store_is_a_404(self, h):
         r = h.client.post("/api/admin/stores", headers=h.admin, json={"name": "X", "copy_from": 999})
         assert r.status_code == 404
+
+    def test_an_install_that_predates_sharing_keeps_its_settings(self, h):
+        """The shared row is seeded from the first store, so upgrading keeps the card setup and webhook it had."""
+        from app.database import session_scope
+        from app.repositories import SettingsRepository, StoreRepository
+        from app.services.config import config_service, ensure_defaults
+
+        with session_scope() as db:
+            row = StoreRepository(db).list()[0]
+            row.settings = {**row.settings, "shippingFlat": 1234, "clientApiUrl": "https://old.example.com/charge"}
+            db.execute(__import__("sqlalchemy").text("DELETE FROM settings WHERE k = 'shared'"))
+        config_service.invalidate()
+        with session_scope() as db:
+            ensure_defaults(db)
+            assert SettingsRepository(db).all()["shared"]["shippingFlat"] == 1234
+        config_service.invalidate()
+        assert settings_of(h, 1)["clientApiUrl"] == "https://old.example.com/charge"
 
 
 class TestPerStoreConfiguration:
@@ -171,25 +237,18 @@ class TestPerStoreConfiguration:
         assert b_view["storeName"] == "Beta Shop" and b_view["branding"]["notice"] == "Beta notice"
         assert a_view["storeName"] != "Beta Shop" and a_view["branding"]["notice"] != "Beta notice"
 
-    def test_webhooks_go_to_each_stores_own_endpoint(self, h, two, webhook_receiver):
+    def test_all_stores_share_the_webhook_and_each_payload_names_its_store(self, h, two, webhook_receiver):
         first, second = two
-        h.client.put(
-            f"/api/admin/settings?store={second['id']}", headers=h.admin, json={"webhookUrl": webhook_receiver.url}
-        )
+        h.configure(webhookUrl=webhook_receiver.url)
         order_for(h, first["id"])
-        assert h.run_worker() == 0  # the first store has no webhook configured
         order_for(h, second["id"])
         h.run_worker()
         payloads = [json.loads(w.body) for w in webhook_receiver.received]
-        assert {p["event"] for p in payloads} >= {"order.created"}
-        assert all(p["data"]["store_id"] == second["id"] for p in payloads)
+        assert {p["data"]["store_id"] for p in payloads} == {first["id"], second["id"]}
 
     def test_the_settings_log_only_lists_that_stores_webhooks(self, h, two, webhook_receiver):
         first, second = two
         h.configure(webhookUrl=webhook_receiver.url)  # default store
-        h.client.put(
-            f"/api/admin/settings?store={second['id']}", headers=h.admin, json={"webhookUrl": webhook_receiver.url}
-        )
         a, b = order_for(h, first["id"]), order_for(h, second["id"])
         log_a = {e["order"] for e in settings_of(h, first["id"])["webhookLog"]}
         log_b = {e["order"] for e in settings_of(h, second["id"])["webhookLog"]}

@@ -33,18 +33,21 @@ Your **API key**, webhook secret, payment methods, shipping/tax defaults and SMT
 
 ## Several stores, one checkout
 
-One deployment can serve any number of stores. **Admin → Stores → Add a store** creates one; each store has its own:
-API key, branding (logo, menu links, notice), payment/card setup, shipping & tax defaults, webhook URL + secret and Shopify
-connection. Orders, checkout sessions and visits are stored per store; a store's API key only ever reaches that store's data.
+One deployment can serve any number of stores. **Admin → Stores → Add a store** creates one.
 
+- **Per store:** API key, branding (name, logo, menu links, checkout notice), website and Shopify connection (domain +
+  Storefront token). Orders, checkout sessions and visits are stored per store, and a store's API key only ever reaches
+  that store's data.
+- **Shared by all stores:** card payments (provider, client API URL, signing secret), payment methods, shipping & tax
+  defaults, allowed redirect domains and webhooks. Edit them once and every store uses them; each webhook payload carries
+  `data.store_id` so the receiver can tell stores apart. The client therefore needs one payment endpoint and one signing
+  secret.
 - The **store switcher** in the sidebar filters orders, revenue and visits to one store (or *All stores*). *Settings & API*
-  always edits the selected store.
-- **Copy settings from…** when adding a store starts it with another store's card/payment setup (including the client API
-  URL and signing secret), shipping/tax and branding. It still gets its own API key, webhook, website and Shopify
-  domain/token. After copying, the stores are independent.
+  has its own "Editing settings for" store dropdown (only the per-store sections change with it).
+- **Copy branding from…** when adding a store starts it with another store's logo, menu links and notice.
 - Disabling a store stops its API key and Shopify button working; stores that have orders can be disabled but not deleted.
 - Each store needs its own website / Shopify domain (two stores can't claim the same one).
-- Shared across stores: the admin login, SMTP/email settings, and the order-number sequence (#1001, #1002, … is global).
+- Also shared: the admin login, SMTP/email settings, and the order-number sequence (#1001, #1002, … is global).
 - Upgrading a single-store install is automatic: its settings become store #1 and keep the same API key, so existing
   integrations continue to work.
 

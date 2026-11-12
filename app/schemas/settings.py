@@ -271,3 +271,20 @@ class EmailTestIn(BaseModel):
         if not re.fullmatch(r"[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+", v):
             raise ValueError("Enter a valid recipient address")
         return v
+
+
+# Which store settings belong to one store and which are shared by every store on this checkout.
+# (The API key stays per store: it is what tells the server which store is calling.)
+STORE_ONLY_FIELDS = frozenset(
+    {
+        "store_name",
+        "api_key",
+        "logo_url",
+        "store_url",
+        "nav_links",
+        "notice",
+        "shopify_domain",
+        "shopify_storefront_token",
+    }
+)
+SHARED_FIELDS = frozenset(StoreSettings.model_fields) - STORE_ONLY_FIELDS

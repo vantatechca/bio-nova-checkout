@@ -16,9 +16,9 @@ from sqlalchemy.orm import Session
 
 from app.models import Store
 from app.repositories import SettingsRepository, StoreRepository
-from app.schemas.settings import EmailSettings, StoreSettings
+from app.schemas.settings import SHARED_FIELDS, STORE_ONLY_FIELDS, EmailSettings, StoreSettings
 
-_EMAIL, _SALT, _SECRET = "email", "salt", "secret"
+_EMAIL, _SALT, _SECRET, _SHARED = "email", "salt", "secret", "shared"
 _TTL_SECONDS = 5.0  # other app instances' edits become visible within this window
 
 
@@ -50,9 +50,22 @@ class StoreRecord:
         return allowed_origins(self.settings)
 
 
-def _record(row: Store) -> StoreRecord:
+def merged_settings(own: dict, shared: dict) -> StoreSettings:
+    """A store's full settings: its own (branding, Shopify, API key) plus the settings shared by all stores."""
+    return StoreSettings.model_validate({**own, **shared})
+
+
+def split_settings(settings: StoreSettings) -> tuple[dict, dict]:
+    """``(own, shared)`` as JSON-ready dicts, for saving the per-store row and the shared row separately."""
+    return (
+        settings.model_dump(by_alias=True, include=set(STORE_ONLY_FIELDS)),
+        settings.model_dump(by_alias=True, include=set(SHARED_FIELDS)),
+    )
+
+
+def _record(row: Store, shared: dict) -> StoreRecord:
     return StoreRecord(
-        id=row.id, slug=row.slug, name=row.name, active=row.active, settings=StoreSettings.model_validate(row.settings)
+        id=row.id, slug=row.slug, name=row.name, active=row.active, settings=merged_settings(row.settings, shared)
     )
 
 
@@ -91,8 +104,8 @@ class AppConfig:
 
 
 def mirror_columns(row: Store, settings: StoreSettings) -> None:
-    """Keeps the indexed columns on ``Store`` in step with the settings JSON."""
-    row.settings = settings.model_dump(by_alias=True)
+    """Saves the store's own settings and keeps the indexed columns on ``Store`` in step with them."""
+    row.settings = split_settings(settings)[0]
     row.name = settings.store_name
     row.api_key = settings.api_key
     row.shopify_domain = settings.shopify_domain or None
@@ -111,10 +124,19 @@ def ensure_defaults(db: Session) -> None:
     if store_repo.count() == 0:
         stores.create_store(db, "My Store")
 
+    # Shared settings: seeded once from the first store (so an install that predates sharing keeps what it had).
+    first = store_repo.list()[0]
+    seed = split_settings(StoreSettings.model_validate(first.settings))[1]
+    repo.insert_if_missing(_SHARED, seed)
+
     # Settings introduced by newer versions (e.g. the client-API signing secret) are generated once and saved here,
     # instead of being re-generated every time the configuration is loaded.
+    shared = repo.all()[_SHARED]
+    complete_shared = split_settings(merged_settings({}, shared))[1]
+    if complete_shared != shared:
+        repo.set(_SHARED, complete_shared)
     for row in store_repo.list():
-        complete = StoreSettings.model_validate(row.settings).model_dump(by_alias=True)
+        complete = split_settings(StoreSettings.model_validate(row.settings))[0]
         if complete != row.settings:
             row.settings = complete
 
@@ -134,8 +156,9 @@ class ConfigService:
             if self._cached and time.monotonic() - self._loaded_at < _TTL_SECONDS:
                 return self._cached
         rows = SettingsRepository(db).all()
+        shared = rows.get(_SHARED, {})
         config = AppConfig(
-            stores=tuple(_record(r) for r in StoreRepository(db).list()),
+            stores=tuple(_record(r, shared) for r in StoreRepository(db).list()),
             email=EmailSettings.model_validate(rows.get(_EMAIL, {})),
             salt=rows.get(_SALT, {}).get("value", ""),
             secret=rows.get(_SECRET, {}).get("value", ""),

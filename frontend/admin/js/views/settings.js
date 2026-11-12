@@ -14,10 +14,11 @@ export async function loadSettings() {
   const navLinks = (cfg.navLinks ?? []).map((l) => ({ ...l }));
   const base = cfg.publicUrl.replace(/\/$/, '');
 
-  const current = state.stores.find((x) => x.id === cfg.storeId);
   root.innerHTML = `
-    ${state.stores.length > 1 ? `<p class="muted notice">Editing settings for <b>${esc(current?.name ?? cfg.storeName)}</b>. Use the store switcher in the sidebar to edit another store.</p>` : ''}
-    <div class="card"><div class="card-head"><div><h2>Connect your store</h2><p class="sub" style="margin:0">API key for server-to-server calls. Not for browser code.</p></div>
+    ${state.stores.length > 1 ? `<div class="card"><label style="margin:0">Editing settings for
+      <select data-role="settings-store" style="max-width:360px">${state.stores.map((x) => `<option value="${x.id}" ${x.id === cfg.storeId ? 'selected' : ''}>${esc(x.name)}${x.active ? '' : ' (disabled)'}</option>`).join('')}</select></label>
+      <p class="muted" style="font-size:13px;margin:8px 0 0"><span class="scope own">This store only</span>: API key, Branding and Shopify. <span class="scope shared">Shared by all stores</span>: card payments, store &amp; checkout defaults and webhooks &mdash; change them once and every store uses them.</p></div>` : ''}
+    <div class="card"><div class="card-head"><div><h2>Connect your store <span class="scope own">This store only</span></h2><p class="sub" style="margin:0">API key for server-to-server calls. Not for browser code.</p></div>
       <button class="primary" data-role="test-checkout">${icon('package')} Create test checkout</button></div>
       <label>API key</label>
       <div class="secret"><div class="mono" data-role="api-key">${MASK}</div><button data-role="show-key">Show</button><button class="danger" data-role="rotate-key">Rotate</button></div>
@@ -29,7 +30,7 @@ export async function loadSettings() {
       <p class="muted" style="font-size:13.5px;margin-top:10px">The response contains <code>checkout_url</code>, the page the customer is sent to. Amounts are in minor units (cents).</p>
     </div>
 
-    <div class="card"><h2>Branding</h2><p class="sub">Make the customer checkout page match your storefront.</p>
+    <div class="card"><h2>Branding <span class="scope own">This store only</span></h2><p class="sub">Make the customer checkout page match your storefront.</p>
       <div class="grid2">
         <label>Logo image URL <span class="muted">(https://… .png / .svg)</span><input data-field="logoUrl" placeholder="https://yourstore.com/logo.png" value="${esc(cfg.logoUrl)}"></label>
         <label>Store website <span class="muted">(where the logo links to)</span><input data-field="storeUrl" placeholder="https://yourstore.com" value="${esc(cfg.storeUrl)}"></label>
@@ -41,7 +42,7 @@ export async function loadSettings() {
       <div class="row" style="margin-top:6px"><button data-role="add-link">${icon('plus')} Add link</button><button class="primary" data-role="save-branding">Save branding</button></div>
     </div>
 
-    <div class="card"><h2>Shopify</h2><p class="sub">Send shoppers here when they click <b>Checkout</b> on your Shopify store. Orders are managed in this admin.</p>
+    <div class="card"><h2>Shopify <span class="scope own">This store only</span></h2><p class="sub">Send shoppers here when they click <b>Checkout</b> on your Shopify store. Orders are managed in this admin.</p>
       <div class="grid2">
         <label>Shop domain <span class="muted">(your-shop.myshopify.com)</span><input data-field="shopifyDomain" placeholder="your-shop.myshopify.com" value="${esc(cfg.shopifyDomain)}"></label>
         <label>Storefront API access token <span class="muted">(read-only product data)</span><input data-field="shopifyStorefrontToken" autocomplete="off" placeholder="shpat_… / token from your custom app" value="${esc(cfg.shopifyStorefrontToken)}"></label>
@@ -57,7 +58,7 @@ export async function loadSettings() {
       <p class="muted" style="font-size:13px">This service must be reachable at a public <b>https</b> address for shoppers (not <code>localhost</code>): set <code>PUBLIC_URL</code>. Shopify's own checkout stays reachable at <code>/checkout</code> for anyone who types it directly.</p>
     </div>
 
-    <div class="card"><h2>Card payments</h2><p class="sub">Card payments are processed by the client's own processor through the client's API. Card numbers never reach this server.</p>
+    <div class="card"><h2>Card payments <span class="scope shared">Shared by all stores</span></h2><p class="sub">Card payments are processed by the client's own processor through the client's API. Card numbers never reach this server.</p>
       <div class="grid2">
         <label>Card provider
           <select data-field="cardProvider">
@@ -76,7 +77,7 @@ export async function loadSettings() {
       <p class="muted" style="font-size:13px;margin-top:12px">The card option appears at checkout once a provider and the client's API endpoint URL are set and a payment method of type <b>Card</b> exists below. Redirect payments stay Pending until the client's server marks them paid.</p>
     </div>
 
-    <div class="card"><h2>Store &amp; checkout</h2><p class="sub">Defaults applied to every checkout.</p>
+    <div class="card"><h2>Store &amp; checkout <span class="scope shared">Shared by all stores</span></h2><p class="sub">Defaults applied to every checkout.</p>
       <div class="grid2">
         <label>Store name<input data-field="storeName" value="${esc(cfg.storeName)}"></label>
         <label>Default currency<input data-field="currency" maxlength="3" value="${esc(cfg.currency)}"></label>
@@ -92,7 +93,7 @@ export async function loadSettings() {
       <div class="row" style="margin-top:20px"><button class="primary" data-role="save">Save settings</button><span class="msg" data-role="save-msg"></span></div>
     </div>
 
-    <div class="card"><h2>Webhooks</h2><p class="sub">Get notified when orders are created, paid or updated.</p>
+    <div class="card"><h2>Webhooks <span class="scope shared">Shared by all stores</span></h2><p class="sub">Get notified when orders are created, paid or updated.</p>
       <label>Webhook URL <span class="muted">(receives <code>order.created</code>, <code>order.paid</code>, <code>order.updated</code>)</span><input data-field="webhookUrl" placeholder="https://yourstore.com/webhooks/checkout" value="${esc(cfg.webhookUrl)}"></label>
       <label>Signing secret <span class="muted">(HMAC-SHA256 of the raw body, header <code>X-Checkout-Signature</code>)</span></label>
       <div class="secret"><div class="mono" data-role="webhook-secret">${MASK}</div><button data-role="show-secret">Show</button><button class="danger" data-role="rotate-secret">Rotate</button></div>
@@ -159,6 +160,10 @@ export async function loadSettings() {
     drawLinks();
   });
   // Branding shares the page-wide "Save settings" request.
+  $('[data-role=settings-store]', root)?.addEventListener('change', (e) => {
+    state.settingsStore = Number(e.target.value);
+    loadSettings().catch((err) => alert(err.message));
+  });
   $('[data-role=save-branding]', root).addEventListener('click', () => $('[data-role=save]', root).click());
 
   // ---- payment methods editor

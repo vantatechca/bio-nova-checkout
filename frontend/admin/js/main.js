@@ -68,6 +68,7 @@ function renderSwitcher() {
 async function reloadStores() {
   state.stores = await api('/stores');
   if (state.store !== null && !selectedStore()) state.store = null;
+  if (state.settingsStore !== null && !state.stores.some((x) => x.id === state.settingsStore)) state.settingsStore = null;
   renderSwitcher();
   showBrand();
 }
@@ -100,8 +101,6 @@ function render() {
 
 function navigate(tab) {
   state.tab = tab;
-  // Settings are per store: with "All stores" selected, show the first store's.
-  if (tab === 'settings' && showingAll()) selectStore(state.stores[0].id);
   const activeView = ORDER_TABS.includes(tab) ? 'orders' : tab;
   const [title, sub] = TITLES[tab];
   $('#page-title').textContent = title;
@@ -147,7 +146,7 @@ $('#store-switch').addEventListener('change', (e) => {
 });
 bindStoreHooks({
   reload: reloadStores,
-  open: (id) => { selectStore(id); navigate('settings'); },
+  open: (id) => { state.settingsStore = id; navigate('settings'); },
 });
 
 render();
