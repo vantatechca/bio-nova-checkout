@@ -245,7 +245,7 @@ function renderForm() {
           <div class="row">
             <label><span class="req">City</span><input name="city" autocomplete="address-level2" required></label>
             <label><span class="req">Country</span><select name="country" autocomplete="country-name" required>
-              <option value="">Select a country</option>${countries().map((c) => `<option>${esc(c)}</option>`).join('')}
+              ${countries().length > 1 ? '<option value="">Select a country</option>' : ''}${countries().map((c) => `<option>${esc(c)}</option>`).join('')}
             </select></label>
           </div>
           <div class="row">
@@ -287,6 +287,7 @@ function wireRegionPicker() {
       : 'State / Province <span class="hint">(optional)</span><input name="state" autocomplete="address-level1">';
   };
   form.elements.country.addEventListener('change', render);
+  render(); // a single-country list is preselected, so its state list is needed straight away
 }
 
 async function submitOrder(event) {
