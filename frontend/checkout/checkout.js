@@ -350,9 +350,6 @@ function showConfirmation(orderNumber, successUrl, paymentInstructions) {
       button.innerHTML = `${icon('check')} Copied`;
       setTimeout(() => { button.classList.remove('copied'); button.innerHTML = `${icon('copy')} Copy`; }, 1800);
     }));
-
-  // Payment still owed (bank transfer, ...): stay on this page so the customer can read the instructions.
-  if (url && !owing) setTimeout(() => { location.href = url; }, 3500);
 }
 
 init().catch(() => showMessage({ iconName: 'x-circle', title: 'Something went wrong', text: 'Please refresh and try again.' }));

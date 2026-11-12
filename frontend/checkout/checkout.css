@@ -172,10 +172,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 
 /* ---------- Confirmation ---------- */
 .confirmation { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 40px 36px 32px; text-align: center; display: grid; gap: 16px; justify-items: center; }
-.burst { position: relative; width: 84px; height: 84px; }
-.burst svg { width: 84px; height: 84px; }
-.burst .ring { fill: none; stroke: var(--ok); stroke-width: 4; stroke-dasharray: 289; stroke-dashoffset: 289; stroke-linecap: round; animation: draw 0.7s 0.1s ease forwards; }
-.burst .tick { fill: none; stroke: var(--ok); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 0.45s 0.65s ease forwards; }
+.burst { position: relative; width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(145deg, #34d399, #059669); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.14), 0 0 0 16px rgba(16, 185, 129, 0.07), 0 12px 28px rgba(5, 150, 105, 0.35); animation: burst-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; margin-bottom: 8px; }
+.burst svg { width: 88px; height: 88px; display: block; }
+.burst .ring { display: none; }
+.burst .tick { fill: none; stroke: #fff; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 0.45s 0.35s ease forwards; }
+@keyframes burst-pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .confirmation h2 { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1.15; }
 .confirmation .lead { color: var(--text-2); max-width: 440px; }
 .chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
