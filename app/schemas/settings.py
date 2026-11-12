@@ -193,6 +193,7 @@ class StoreSettingsUpdate(CamelModel):
 
 
 class StoreSettingsOut(StoreSettings):
+    store_id: int
     public_url: str
     webhook_log: list[dict]
 

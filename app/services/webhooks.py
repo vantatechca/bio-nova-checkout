@@ -27,7 +27,8 @@ def sign(secret: str, payload: str) -> str:
 
 def enqueue_webhook(db: Session, config: AppConfig, event: str, order: Order) -> WebhookDelivery | None:
     """Freezes the payload and signature now so every retry is byte-identical (receivers can de-duplicate on ``id``)."""
-    if not config.store.webhook_url:
+    store = config.store_by_id(order.store_id)
+    if store is None or not store.settings.webhook_url:
         return None
     now = utcnow()
     payload = json.dumps(
@@ -43,9 +44,9 @@ def enqueue_webhook(db: Session, config: AppConfig, event: str, order: Order) ->
         id=f"wh_{secrets.token_hex(8)}",
         event=event,
         order_number=order.number,
-        url=config.store.webhook_url,
+        url=store.settings.webhook_url,
         payload=payload,
-        signature=sign(config.store.webhook_secret, payload),
+        signature=sign(store.settings.webhook_secret, payload),
         next_attempt_at=now,
     )
     OutboxRepository(db).add_webhook(delivery)

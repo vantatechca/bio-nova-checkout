@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import ColumnElement, String, and_, case, cast, func, or_, select
+from sqlalchemy import ColumnElement, String, and_, case, cast, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from app.models import Order, OrderStatus, PaymentStatus
@@ -29,6 +29,11 @@ def _paid_revenue(currency: str) -> ColumnElement[bool]:
     )
 
 
+def _scope(store_id: int | None) -> ColumnElement[bool]:
+    """Restricts a query to one store; ``None`` means every store."""
+    return Order.store_id == store_id if store_id is not None else true()
+
+
 @dataclass
 class OrderCounts:
     total: int
@@ -48,8 +53,9 @@ class RevenueSums:
 
 
 class OrderRepository:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, store_id: int | None = None) -> None:
         self.db = db
+        self.store_id = store_id  # None = all stores
 
     # ---- single orders
     def add(self, order: Order) -> None:
@@ -64,10 +70,12 @@ class OrderRepository:
         return Order.public_id == key
 
     def get(self, key: str) -> Order | None:
-        return self.db.scalars(select(Order).where(self._key_filter(key))).first()
+        return self.db.scalars(select(Order).where(self._key_filter(key), _scope(self.store_id))).first()
 
     def get_for_update(self, key: str) -> Order | None:
-        return self.db.scalars(select(Order).where(self._key_filter(key)).with_for_update()).first()
+        return self.db.scalars(
+            select(Order).where(self._key_filter(key), _scope(self.store_id)).with_for_update()
+        ).first()
 
     # ---- listing
     def list(
@@ -79,7 +87,7 @@ class OrderRepository:
         external_ref: str | None = None,
         limit: int = 500,
     ) -> tuple[list[Order], bool]:
-        stmt = select(Order)
+        stmt = select(Order).where(_scope(self.store_id))
         if tab in TAB_FILTERS:
             stmt = stmt.where(TAB_FILTERS[tab])
         if status:
@@ -111,10 +119,16 @@ class OrderRepository:
                 flag(TAB_FILTERS["pending"]),
                 flag(TAB_FILTERS["paid"]),
                 flag(TAB_FILTERS["failed"]),
-            )
+            ).where(_scope(self.store_id))
         ).one()
-        by_status = dict(self.db.execute(select(Order.status, func.count()).group_by(Order.status)).all())
-        revenue = self.db.scalar(select(func.coalesce(func.sum(Order.total), 0)).where(_paid_revenue(currency)))
+        by_status = dict(
+            self.db.execute(
+                select(Order.status, func.count()).where(_scope(self.store_id)).group_by(Order.status)
+            ).all()
+        )
+        revenue = self.db.scalar(
+            select(func.coalesce(func.sum(Order.total), 0)).where(_paid_revenue(currency), _scope(self.store_id))
+        )
         return OrderCounts(
             total=int(total),
             pending=int(pending),
@@ -132,20 +146,22 @@ class OrderRepository:
 
         row = self.db.execute(
             select(func.coalesce(func.sum(Order.total), 0), since(start_of_today), since(last7), since(last30)).where(
-                _paid_revenue(currency)
+                _paid_revenue(currency), _scope(self.store_id)
             )
         ).one()
         return RevenueSums(*(int(v) for v in row))
 
     def paid_since(self, currency: str, since: datetime) -> list[tuple[int, datetime]]:
-        rows = self.db.execute(select(Order.total, PAID_AT).where(_paid_revenue(currency), since <= PAID_AT)).all()
+        rows = self.db.execute(
+            select(Order.total, PAID_AT).where(_paid_revenue(currency), _scope(self.store_id), since <= PAID_AT)
+        ).all()
         return [(int(total), paid_at) for total, paid_at in rows]
 
     def revenue_by_method(self, currency: str) -> list[tuple[str, int, int]]:
         amount = func.sum(Order.total)
         rows = self.db.execute(
             select(Order.payment_method_label, func.count(), amount)
-            .where(_paid_revenue(currency))
+            .where(_paid_revenue(currency), _scope(self.store_id))
             .group_by(Order.payment_method_label)
             .order_by(amount.desc())
         ).all()
@@ -154,7 +170,7 @@ class OrderRepository:
     def awaiting_payment(self, currency: str) -> tuple[int, int]:
         total, count = self.db.execute(
             select(func.coalesce(func.sum(Order.total), 0), func.count()).where(
-                TAB_FILTERS["pending"], Order.currency == currency
+                TAB_FILTERS["pending"], Order.currency == currency, _scope(self.store_id)
             )
         ).one()
         return int(total), int(count)
@@ -164,9 +180,10 @@ class OrderRepository:
             select(func.coalesce(func.sum(Order.total), 0), func.count()).where(
                 or_(Order.payment_status == PaymentStatus.REFUNDED, Order.status == OrderStatus.REFUNDED),
                 Order.currency == currency,
+                _scope(self.store_id),
             )
         ).one()
         return int(total), int(count)
 
     def count_other_currency(self, currency: str) -> int:
-        return int(self.db.scalar(select(func.count()).where(Order.currency != currency)) or 0)
+        return int(self.db.scalar(select(func.count()).where(Order.currency != currency, _scope(self.store_id))) or 0)

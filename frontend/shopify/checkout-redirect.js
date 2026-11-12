@@ -77,6 +77,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             cart_token: cart.token || '',
+            shop: (window.Shopify && window.Shopify.shop) || '', // tells the checkout which of its stores this is
             items: cart.items.map(function (item) { return { variant_id: item.variant_id, quantity: item.quantity }; })
           })
         }).then(function (r) {

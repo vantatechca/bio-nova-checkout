@@ -41,6 +41,7 @@ class Order(Base):
     )
 
     number: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("stores.id"), index=True)
     public_id: Mapped[str] = mapped_column(String(40), unique=True)
     session_id: Mapped[str] = mapped_column(String(64), unique=True)  # one order per checkout session
     external_ref: Mapped[str] = mapped_column(String(200), default="")

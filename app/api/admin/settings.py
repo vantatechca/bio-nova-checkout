@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from app.api.deps import Config, DbSession, base_url
+from app.api.deps import AdminStore, DbSession, base_url
 from app.models.types import utcnow
 from app.repositories import OutboxRepository
 from app.schemas.checkout import CreateSessionIn, LineItemIn, SessionOut
@@ -14,10 +14,11 @@ router = APIRouter(prefix="/api/admin", tags=["admin: settings"])
 
 
 @router.get("/settings", response_model=StoreSettingsOut)
-def get_settings_view(request: Request, db: DbSession, config: Config):
-    deliveries = OutboxRepository(db).recent_webhooks(50)
+def get_settings_view(request: Request, db: DbSession, store: AdminStore):
+    deliveries = OutboxRepository(db).recent_webhooks(50, store.id)
     return StoreSettingsOut(
-        **config.store.model_dump(),
+        **store.settings.model_dump(),
+        store_id=store.id,
         public_url=base_url(request),
         webhook_log=[
             {
@@ -37,28 +38,28 @@ def get_settings_view(request: Request, db: DbSession, config: Config):
 
 
 @router.put("/settings")
-def update_settings(data: StoreSettingsUpdate, db: DbSession, config: Config) -> dict[str, bool]:
-    settings_service.update_store(db, config, data)
+def update_settings(data: StoreSettingsUpdate, db: DbSession, store: AdminStore) -> dict[str, bool]:
+    settings_service.update_store(db, store, data)
     return {"ok": True}
 
 
 @router.post("/settings/rotate-key")
-def rotate_key(db: DbSession, config: Config) -> dict[str, str]:
-    return {"apiKey": settings_service.rotate_api_key(db, config)}
+def rotate_key(db: DbSession, store: AdminStore) -> dict[str, str]:
+    return {"apiKey": settings_service.rotate_api_key(db, store)}
 
 
 @router.post("/settings/rotate-webhook-secret")
-def rotate_webhook_secret(db: DbSession, config: Config) -> dict[str, str]:
-    return {"webhookSecret": settings_service.rotate_webhook_secret(db, config)}
+def rotate_webhook_secret(db: DbSession, store: AdminStore) -> dict[str, str]:
+    return {"webhookSecret": settings_service.rotate_webhook_secret(db, store)}
 
 
 @router.post("/test-session", response_model=SessionOut, status_code=201)
-def create_test_session(request: Request, db: DbSession, config: Config):
+def create_test_session(request: Request, db: DbSession, store: AdminStore):
     """A throwaway sample cart so the checkout page can be tried without a connected store."""
     base = base_url(request).rstrip("/")
     session = checkout.create_session(
         db,
-        config,
+        store,
         CreateSessionIn(
             items=[
                 LineItemIn(name="Sample T-shirt", unit_amount=2500, quantity=2, description="Size M"),

@@ -1,43 +1,122 @@
-"""Runtime configuration stored in the database, with a short-lived in-process cache."""
+"""Runtime configuration stored in the database, with a short-lived in-process cache.
+
+Each connected store (see ``Store``) carries its own ``StoreSettings``; e-mail (SMTP) settings are shared.
+"""
 
 from __future__ import annotations
 
+import hmac
 import secrets
 import threading
 import time
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 
-from app.repositories import SettingsRepository
+from app.models import Store
+from app.repositories import SettingsRepository, StoreRepository
 from app.schemas.settings import EmailSettings, StoreSettings
 
-_STORE, _EMAIL, _SALT, _SECRET = "store", "email", "salt", "secret"
+_EMAIL, _SALT, _SECRET = "email", "salt", "secret"
 _TTL_SECONDS = 5.0  # other app instances' edits become visible within this window
+
+
+def allowed_origins(store: StoreSettings) -> set[str]:
+    """Browser origins a store's storefront calls us from: its website (with/without ``www.``) and its shop domain."""
+    origins: set[str] = set()
+    candidates = [store.store_url, f"https://{store.shopify_domain}" if store.shopify_domain else ""]
+    for url in candidates:
+        parts = urlparse(url)
+        if not (parts.scheme and parts.hostname):
+            continue
+        port = f":{parts.port}" if parts.port else ""
+        host = parts.hostname
+        alternate = host.removeprefix("www.") if host.startswith("www.") else f"www.{host}"
+        origins.update({f"{parts.scheme}://{host}{port}", f"{parts.scheme}://{alternate}{port}"})
+    return origins
+
+
+@dataclass(frozen=True)
+class StoreRecord:
+    id: int
+    slug: str
+    name: str
+    active: bool
+    settings: StoreSettings
+
+    @property
+    def origins(self) -> set[str]:
+        return allowed_origins(self.settings)
+
+
+def _record(row: Store) -> StoreRecord:
+    return StoreRecord(
+        id=row.id, slug=row.slug, name=row.name, active=row.active, settings=StoreSettings.model_validate(row.settings)
+    )
 
 
 @dataclass(frozen=True)
 class AppConfig:
-    store: StoreSettings
+    stores: tuple[StoreRecord, ...]
     email: EmailSettings
     salt: str  # salts the visitor hash (privacy-preserving unique-visitor counts)
     secret: str  # signs admin tokens
 
+    @property
+    def default_store(self) -> StoreRecord:
+        """The first active store (else the first store): what single-store callers and the admin default to."""
+        for store in self.stores:
+            if store.active:
+                return store
+        return self.stores[0]
+
+    def store_by_id(self, store_id: int) -> StoreRecord | None:
+        return next((s for s in self.stores if s.id == store_id), None)
+
+    def store_by_api_key(self, key: str) -> StoreRecord | None:
+        """Constant-time comparison against every store, so response time doesn't reveal key prefixes."""
+        match = None
+        for store in self.stores:
+            if hmac.compare_digest(store.settings.api_key.encode(), key.encode()):
+                match = store
+        return match
+
+    def stores_for_origin(self, origin: str) -> list[StoreRecord]:
+        return [s for s in self.stores if s.active and origin in s.origins]
+
+    def stores_for_shop(self, shop: str) -> list[StoreRecord]:
+        shop = shop.strip().lower()
+        return [s for s in self.stores if s.active and shop and s.settings.shopify_domain.lower() == shop]
+
+
+def mirror_columns(row: Store, settings: StoreSettings) -> None:
+    """Keeps the indexed columns on ``Store`` in step with the settings JSON."""
+    row.settings = settings.model_dump(by_alias=True)
+    row.name = settings.store_name
+    row.api_key = settings.api_key
+    row.shopify_domain = settings.shopify_domain or None
+
 
 def ensure_defaults(db: Session) -> None:
     """First-run seeding. Existing rows are never overwritten."""
+    from app.services import stores  # local import: stores builds on this module
+
     repo = SettingsRepository(db)
-    repo.insert_if_missing(_STORE, StoreSettings().model_dump(by_alias=True))
     repo.insert_if_missing(_EMAIL, EmailSettings().model_dump(by_alias=True))
     repo.insert_if_missing(_SALT, {"value": secrets.token_hex(12)})
     repo.insert_if_missing(_SECRET, {"value": secrets.token_hex(32)})
 
+    store_repo = StoreRepository(db)
+    if store_repo.count() == 0:
+        stores.create_store(db, "My Store")
+
     # Settings introduced by newer versions (e.g. the client-API signing secret) are generated once and saved here,
     # instead of being re-generated every time the configuration is loaded.
-    stored = repo.all().get(_STORE, {})
-    complete = StoreSettings.model_validate(stored).model_dump(by_alias=True)
-    if complete != stored:
-        repo.set(_STORE, complete)
+    for row in store_repo.list():
+        complete = StoreSettings.model_validate(row.settings).model_dump(by_alias=True)
+        if complete != row.settings:
+            row.settings = complete
 
 
 class ConfigService:
@@ -56,7 +135,7 @@ class ConfigService:
                 return self._cached
         rows = SettingsRepository(db).all()
         config = AppConfig(
-            store=StoreSettings.model_validate(rows.get(_STORE, {})),
+            stores=tuple(_record(r) for r in StoreRepository(db).list()),
             email=EmailSettings.model_validate(rows.get(_EMAIL, {})),
             salt=rows.get(_SALT, {}).get("value", ""),
             secret=rows.get(_SECRET, {}).get("value", ""),
@@ -64,10 +143,6 @@ class ConfigService:
         with self._lock:
             self._cached, self._loaded_at = config, time.monotonic()
         return config
-
-    def save_store(self, db: Session, store: StoreSettings) -> None:
-        SettingsRepository(db).set(_STORE, store.model_dump(by_alias=True))
-        self.invalidate()
 
     def save_email(self, db: Session, email: EmailSettings) -> None:
         SettingsRepository(db).set(_EMAIL, email.model_dump(by_alias=True))

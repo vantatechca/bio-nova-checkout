@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Index, String
+from sqlalchemy import BigInteger, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -19,6 +19,7 @@ class Visit(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("stores.id"), index=True)
     at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     session_id: Mapped[str] = mapped_column(String(64))
     visitor: Mapped[str] = mapped_column(String(12))

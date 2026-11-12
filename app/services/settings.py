@@ -13,12 +13,13 @@ from app.schemas.settings import (
     StoreSettingsUpdate,
     new_secret,
 )
-from app.services.config import AppConfig, config_service
+from app.services import stores
+from app.services.config import AppConfig, StoreRecord, config_service
 
 
-def update_store(db: Session, config: AppConfig, update: StoreSettingsUpdate) -> StoreSettings:
+def update_store(db: Session, record: StoreRecord, update: StoreSettingsUpdate) -> StoreSettings:
     changes = update.model_dump(exclude_unset=True)
-    store = config.store.model_copy(
+    store = record.settings.model_copy(
         update={k: v for k, v in changes.items() if k != "payment_methods" and v is not None}
     )
     if update.payment_methods is not None:
@@ -30,19 +31,19 @@ def update_store(db: Session, config: AppConfig, update: StoreSettingsUpdate) ->
             methods.append(method)
         store = store.model_copy(update={"payment_methods": methods})
     store = StoreSettings.model_validate(store.model_dump())  # re-run validators on the merged result
-    config_service.save_store(db, store)
+    stores.save_settings(db, record.id, store)
     return store
 
 
-def rotate_api_key(db: Session, config: AppConfig) -> str:
-    store = config.store.model_copy(update={"api_key": new_secret("sk")})
-    config_service.save_store(db, store)
+def rotate_api_key(db: Session, record: StoreRecord) -> str:
+    store = record.settings.model_copy(update={"api_key": new_secret("sk")})
+    stores.save_settings(db, record.id, store)
     return store.api_key
 
 
-def rotate_webhook_secret(db: Session, config: AppConfig) -> str:
-    store = config.store.model_copy(update={"webhook_secret": new_secret("whsec")})
-    config_service.save_store(db, store)
+def rotate_webhook_secret(db: Session, record: StoreRecord) -> str:
+    store = record.settings.model_copy(update={"webhook_secret": new_secret("whsec")})
+    stores.save_settings(db, record.id, store)
     return store.webhook_secret
 
 

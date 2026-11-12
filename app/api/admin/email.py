@@ -56,7 +56,7 @@ def send_test(data: EmailTestIn, config: Config) -> dict[str, bool]:
         send_mail(
             smtp,
             to=data.to,
-            subject=f"Test email from {config.store.store_name}",
+            subject=f"Test email from {config.default_store.name}",
             body="If you can read this, your SMTP settings work.",
         )
     except SmtpError as exc:

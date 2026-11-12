@@ -37,6 +37,10 @@
         <div class="brand-text"><b id="brand">Orders</b><small>Order admin</small></div>
       </div>
 
+      <label class="store-switch hide" id="store-switch-wrap">Store
+        <select id="store-switch" aria-label="Switch store"></select>
+      </label>
+
       <nav id="nav" aria-label="Main">
         <p class="nav-label">Orders</p>
         <button class="tab" data-tab="pending"><span class="ico" data-icon="clock"></span><span class="t">Pending</span><span class="count" data-count="pending">0</span></button>
@@ -48,6 +52,7 @@
         <button class="tab" data-tab="visits"><span class="ico" data-icon="eye"></span><span class="t">Visits</span></button>
 
         <p class="nav-label">Manage</p>
+        <button class="tab" data-tab="stores"><span class="ico" data-icon="package"></span><span class="t">Stores</span></button>
         <button class="tab" data-tab="email"><span class="ico" data-icon="mail"></span><span class="t">Email</span></button>
         <button class="tab" data-tab="settings"><span class="ico" data-icon="sliders"></span><span class="t">Settings &amp; API</span></button>
       </nav>
@@ -81,6 +86,7 @@
         <section id="view-revenue" class="hide"></section>
         <section id="view-email" class="hide"></section>
         <section id="view-visits" class="hide"></section>
+        <section id="view-stores" class="hide"></section>
         <section id="view-settings" class="hide"></section>
       </main>
     </div>

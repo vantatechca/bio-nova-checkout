@@ -31,6 +31,20 @@ then set `DB_PASSWORD=secret`.
 Your **API key**, webhook secret, payment methods, shipping/tax defaults and SMTP settings are in
 **Admin → Settings & API / Email**. All configuration options are listed in [.env.example](.env.example).
 
+## Several stores, one checkout
+
+One deployment can serve any number of stores. **Admin → Stores → Add a store** creates one; each store has its own:
+API key, branding (logo, menu links, notice), payment/card setup, shipping & tax defaults, webhook URL + secret and Shopify
+connection. Orders, checkout sessions and visits are stored per store; a store's API key only ever reaches that store's data.
+
+- The **store switcher** in the sidebar filters orders, revenue and visits to one store (or *All stores*). *Settings & API*
+  always edits the selected store.
+- Disabling a store stops its API key and Shopify button working; stores that have orders can be disabled but not deleted.
+- Each store needs its own website / Shopify domain (two stores can't claim the same one).
+- Shared across stores: the admin login, SMTP/email settings, and the order-number sequence (#1001, #1002, … is global).
+- Upgrading a single-store install is automatic: its settings become store #1 and keep the same API key, so existing
+  integrations continue to work.
+
 ## How a store connects
 
 1. Customer clicks checkout on your store.
@@ -101,6 +115,9 @@ Shoppers who click **Checkout** on your Shopify store are redirected to this che
    <script src="https://YOUR-CHECKOUT-DOMAIN/static/shopify/checkout-redirect.js" defer></script>
    ```
 4. Turn off dynamic checkout buttons (Shop Pay, Apple Pay) if your theme shows them; the script hides the usual ones.
+
+The same one-line script works for every store: the checkout recognises which store a cart belongs to from the page's origin
+(its *Store website*) or, failing that, the `Shopify.shop` domain the script reports. With a single store nothing needs matching.
 
 How it works: the script sends only variant ids and quantities to `POST /api/shopify/checkout`. The service looks up the real
 prices, names, SKUs and stock from Shopify's Storefront API, creates a session and returns the `checkout_url`. **Prices are
@@ -233,6 +250,6 @@ A test fails if the models and migrations drift apart.
 - Serve behind HTTPS and set `PUBLIC_URL` (and `TRUST_PROXY=true` behind a reverse proxy).
 - Set a strong `ADMIN_PASSWORD`, and set **Allowed redirect domains** to your store's domain.
 - Use a dedicated MySQL user (not root) and schedule database backups — MySQL now holds all your data.
-- Settings (API key, SMTP password) are stored unencrypted in the `settings` table — restrict database access.
+- Settings (store API keys in `stores`, SMTP password in `settings`) are stored unencrypted — restrict database access.
 - Login throttling is per process; with several instances put rate limiting at the proxy as well.
 - Currencies are assumed to have two decimal places.

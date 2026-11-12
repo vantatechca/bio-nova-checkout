@@ -6,7 +6,7 @@ from typing import TypeVar
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.models import DeliveryState, EmailLog, EmailStatus, WebhookDelivery
+from app.models import DeliveryState, EmailLog, EmailStatus, Order, WebhookDelivery
 
 Row = TypeVar("Row", EmailLog, WebhookDelivery)
 
@@ -39,8 +39,11 @@ class OutboxRepository:
         self.db.add(delivery)
         self.db.flush()
 
-    def recent_webhooks(self, limit: int = 50) -> list[WebhookDelivery]:
-        return list(self.db.scalars(select(WebhookDelivery).order_by(WebhookDelivery.created_at.desc()).limit(limit)))
+    def recent_webhooks(self, limit: int = 50, store_id: int | None = None) -> list[WebhookDelivery]:
+        stmt = select(WebhookDelivery)
+        if store_id is not None:
+            stmt = stmt.join(Order, Order.number == WebhookDelivery.order_number).where(Order.store_id == store_id)
+        return list(self.db.scalars(stmt.order_by(WebhookDelivery.created_at.desc()).limit(limit)))
 
     # ---- worker support
     def claim_due_emails(self, now: datetime, lease: timedelta, limit: int = 10) -> list[EmailLog]:

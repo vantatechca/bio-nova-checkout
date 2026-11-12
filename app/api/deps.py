@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.errors import Unauthorized
-from app.security import AdminTokens, bearer_token, constant_time_equals
-from app.services.config import AppConfig, config_service
+from app.errors import NotFound, Unauthorized
+from app.security import AdminTokens, bearer_token
+from app.services.config import AppConfig, StoreRecord, config_service
 
 # scope="function": the transaction commits (and the session closes) as soon as the endpoint returns,
 # *before* the response is sent. With the default "request" scope the client could receive "200 OK"
@@ -26,11 +26,18 @@ def get_config(db: DbSession) -> AppConfig:
 Config = Annotated[AppConfig, Depends(get_config)]
 
 
-def require_store(request: Request, config: Config) -> None:
-    """Server-to-server calls from the store authenticate with the API key (Bearer or X-API-Key)."""
+def authenticated_store(request: Request, config: Config) -> StoreRecord:
+    """Server-to-server calls from a store authenticate with that store's API key (Bearer or X-API-Key)."""
     key = bearer_token(request) or request.headers.get("x-api-key", "")
-    if not key or not constant_time_equals(key, config.store.api_key):
+    store = config.store_by_api_key(key) if key else None
+    if store is None:
         raise Unauthorized("Invalid or missing API key")
+    if not store.active:
+        raise Unauthorized("This store is disabled")
+    return store
+
+
+ApiStore = Annotated[StoreRecord, Depends(authenticated_store)]
 
 
 def require_admin(request: Request, config: Config) -> None:
@@ -44,5 +51,23 @@ def base_url(request: Request) -> str:
     return get_settings().public_url or str(request.base_url)
 
 
-StoreAuth = Depends(require_store)
+def admin_store(config: Config, store: Annotated[int | None, Query()] = None) -> StoreRecord:
+    """The store an admin settings call is about (``?store=<id>``; the default store when omitted)."""
+    if store is None:
+        return config.default_store
+    record = config.store_by_id(store)
+    if record is None:
+        raise NotFound("Store not found")
+    return record
+
+
+def store_filter(config: Config, store: Annotated[int | None, Query()] = None) -> int | None:
+    """Which store's data a list/report shows: ``?store=<id>``; omitted means all stores."""
+    if store is not None and config.store_by_id(store) is None:
+        raise NotFound("Store not found")
+    return store
+
+
+AdminStore = Annotated[StoreRecord, Depends(admin_store)]
+StoreScope = Annotated[int | None, Depends(store_filter)]
 AdminAuth = Depends(require_admin)

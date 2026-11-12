@@ -42,18 +42,23 @@ class TestRevenue:
 
     def test_orders_are_bucketed_by_the_admins_local_day(self, h):
         number = h.place_order("test")["number"]
-        paid_at = utcnow().replace(hour=1, minute=0, second=0, microsecond=0)  # 01:00 UTC today
+        # 01:00 UTC on the most recent UTC day that has already reached that hour in Toronto's (UTC-5) calendar
+        paid_at = (utcnow() - timedelta(hours=5)).replace(hour=1, minute=0, second=0, microsecond=0)
         with get_engine().begin() as conn:
             conn.execute(
                 text("UPDATE orders SET paid_at = :t WHERE number = :n"),
                 {"t": paid_at.replace(tzinfo=None), "n": number},
             )
-        utc_view = h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 7, "tz": 0}).json()
-        toronto = h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 7, "tz": 300}).json()  # UTC-5
-        assert utc_view["daily"][-1]["amount"] == 5000
-        assert (
-            toronto["daily"][-1]["amount"] == 0 and toronto["daily"][-2]["amount"] == 5000
-        )  # 01:00 UTC = previous evening
+
+        def amounts(tz):
+            report = h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 7, "tz": tz}).json()
+            return {d["date"]: d["amount"] for d in report["daily"]}
+
+        utc_day = paid_at.date().isoformat()
+        toronto_day = (paid_at - timedelta(hours=5)).date().isoformat()  # 01:00 UTC = the previous evening
+        assert utc_day != toronto_day
+        assert amounts(0)[utc_day] == 5000 and amounts(0).get(toronto_day, 0) == 0
+        assert amounts(300)[toronto_day] == 5000 and amounts(300).get(utc_day, 0) == 0
 
     def test_range_is_clamped_to_supported_values(self, h):
         assert h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 5}).json()["days"] == 30

@@ -43,11 +43,14 @@ function renderTable(tab, hasMore) {
   note.textContent = hasMore ? 'Showing the latest 500 orders — use search to find older ones.' : '';
   note.classList.toggle('hide', !hasMore);
 
-  const headings = ['Order', 'Customer', 'Method', 'Total', paid ? 'Paid on' : 'Payment', 'Status', paid ? 'Reference' : '', ''];
+  const multi = state.store === null && state.stores.length > 1;
+  const storeName = (id) => state.stores.find((x) => x.id === id)?.name ?? '';
+  const headings = ['Order', ...(multi ? ['Store'] : []), 'Customer', 'Method', 'Total', paid ? 'Paid on' : 'Payment', 'Status', paid ? 'Reference' : '', ''];
   $('#orders-head').innerHTML = headings.map((h) => `<th>${h}</th>`).join('');
   $('#orders-body').innerHTML = orders.map((o) => `
     <tr class="clickable" data-id="${esc(o.id)}">
       <td><div class="order-no">#${o.number}<small>${esc(formatDate(o.created_at))}</small></div></td>
+      ${multi ? `<td><span class="store-pill">${esc(storeName(o.store_id))}</span></td>` : ''}
       <td><div class="who">${avatar(o.customer.name)}<div class="nm">${esc(o.customer.name)}<small>${esc(o.customer.email)}</small></div></div></td>
       <td><span class="method">${esc(o.payment_method.label)}</span></td>
       <td><span class="money">${money(o.total, o.currency)}</span></td>

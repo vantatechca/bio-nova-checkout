@@ -45,19 +45,27 @@ def clamp_days(days: int) -> int:
 
 
 # ---------------------------------------------------------------- reports
-def stats(db: Session, config: AppConfig) -> StatsOut:
-    c = OrderRepository(db).counts(config.store.currency)
+def _currency(config: AppConfig, store_id: int | None) -> str:
+    """A store's own currency; for the all-stores view, the default store's."""
+    store = config.store_by_id(store_id) if store_id is not None else None
+    return (store or config.default_store).settings.currency
+
+
+def stats(db: Session, config: AppConfig, store_id: int | None = None) -> StatsOut:
+    currency = _currency(config, store_id)
+    c = OrderRepository(db, store_id).counts(currency)
     return StatsOut(
         total_orders=c.total,
         by_status={s: c.by_status.get(s, 0) for s in OrderStatus.ALL},
         paid_revenue=c.paid_revenue,
-        currency=config.store.currency,
+        currency=currency,
         counts=TabCounts(pending=c.pending, paid=c.paid, failed=c.failed),
     )
 
 
-def revenue_report(db: Session, config: AppConfig, days: int, tz: int) -> RevenueOut:
-    repo, currency, now = OrderRepository(db), config.store.currency, utcnow()
+def revenue_report(db: Session, config: AppConfig, days: int, tz: int, store_id: int | None = None) -> RevenueOut:
+    currency = _currency(config, store_id)
+    repo, now = OrderRepository(db, store_id), utcnow()
     keys = day_range(days, tz, now)
     sums = repo.revenue_sums(
         currency,
@@ -98,8 +106,8 @@ def revenue_report(db: Session, config: AppConfig, days: int, tz: int) -> Revenu
     )
 
 
-def visits_report(db: Session, days: int, tz: int) -> VisitsOut:
-    repo = VisitRepository(db)
+def visits_report(db: Session, days: int, tz: int, store_id: int | None = None) -> VisitsOut:
+    repo = VisitRepository(db, store_id)
     since = utcnow() - timedelta(days=days)
     views, visitors = repo.totals(since)
     per_day = repo.daily(since, tz)

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy.orm import Session
@@ -17,10 +16,9 @@ from app.config import get_settings
 from app.errors import BadGateway, BadRequest
 from app.models import CheckoutSession
 from app.schemas.checkout import CreateSessionIn, LineItemIn
-from app.schemas.settings import StoreSettings
 from app.schemas.shopify import CartLine
 from app.services import checkout
-from app.services.config import AppConfig
+from app.services.config import AppConfig, StoreRecord
 
 # Shopify serves requests for retired versions with the oldest supported one, so this keeps working over time.
 STOREFRONT_API_VERSION = "2026-04"
@@ -120,25 +118,29 @@ class ShopifyClient:
         return found
 
 
-def allowed_origins(store: StoreSettings) -> set[str]:
-    """Browser origins allowed to call the connector: the storefront (with/without ``www.``) and the shop's own domain."""
-    origins: set[str] = set()
-    candidates = [store.store_url, f"https://{store.shopify_domain}" if store.shopify_domain else ""]
-    for url in candidates:
-        parts = urlparse(url)
-        if not (parts.scheme and parts.hostname):
-            continue
-        port = f":{parts.port}" if parts.port else ""
-        host = parts.hostname
-        alternate = host.removeprefix("www.") if host.startswith("www.") else f"www.{host}"
-        origins.update({f"{parts.scheme}://{host}{port}", f"{parts.scheme}://{alternate}{port}"})
-    return origins
+def resolve_store(config: AppConfig, origin: str = "", shop: str = "") -> StoreRecord:
+    """Works out which store a browser request is for: by the page's ``Origin``, else by the ``shop`` domain
+    the theme script reports. With a single active store nothing needs to identify it."""
+    candidates = config.stores_for_origin(origin) if origin else []
+    if not candidates and shop:
+        candidates = config.stores_for_shop(shop)
+    if not candidates:
+        active = [s for s in config.stores if s.active]
+        if len(active) == 1:  # a single store needs no identifying (the browser still can't read the answer via CORS)
+            candidates = active
+        elif origin or shop:
+            raise BadRequest("This website isn't connected to a store here. Add it under Stores → Settings.")
+        else:
+            raise BadRequest("Couldn't tell which store this cart belongs to")
+    if len(candidates) > 1:
+        raise BadRequest("More than one store matches this website; each store needs its own domain")
+    return candidates[0]
 
 
 def create_checkout_from_cart(
-    db: Session, config: AppConfig, lines: list[CartLine], cart_token: str = ""
+    db: Session, record: StoreRecord, lines: list[CartLine], cart_token: str = ""
 ) -> CheckoutSession:
-    store = config.store
+    store = record.settings
     if not (store.shopify_domain and store.shopify_storefront_token):
         raise BadRequest("Shopify isn't connected yet — add the shop domain and Storefront token in Settings")
     if not store.store_url:
@@ -174,7 +176,7 @@ def create_checkout_from_cart(
     storefront = store.store_url.rstrip("/")
     return checkout.create_session(
         db,
-        config,
+        record,
         CreateSessionIn(
             items=items,
             currency=currency,

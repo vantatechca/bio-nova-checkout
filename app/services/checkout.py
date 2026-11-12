@@ -25,7 +25,7 @@ from app.schemas.checkout import (
 )
 from app.schemas.settings import StoreSettings
 from app.services import notifications
-from app.services.config import AppConfig
+from app.services.config import AppConfig, StoreRecord
 from app.services.money import format_money
 from app.services.payments import PaymentRequest, card_available, process_payment
 
@@ -53,8 +53,15 @@ def check_redirect_url(url: str, field: str, store: StoreSettings, *, required: 
 
 
 # ---------------------------------------------------------------- store side
-def create_session(db: Session, config: AppConfig, data: CreateSessionIn) -> CheckoutSession:
-    store = config.store
+def store_for(config: AppConfig, store_id: int) -> StoreRecord:
+    store = config.store_by_id(store_id)
+    if store is None:
+        raise NotFound("Store not found")
+    return store
+
+
+def create_session(db: Session, store_record: StoreRecord, data: CreateSessionIn) -> CheckoutSession:
+    store = store_record.settings
     currency = (data.currency or store.currency).strip().upper()
     if not re.fullmatch(r"[A-Z]{3}", currency):
         raise BadRequest("currency must be a 3-letter code")
@@ -66,6 +73,7 @@ def create_session(db: Session, config: AppConfig, data: CreateSessionIn) -> Che
 
     session = CheckoutSession(
         id=f"cs_{secrets.token_hex(16)}",
+        store_id=store_record.id,
         status=SessionStatus.OPEN,
         currency=currency,
         items=items,
@@ -86,9 +94,10 @@ def create_session(db: Session, config: AppConfig, data: CreateSessionIn) -> Che
     return session
 
 
-def get_session(db: Session, session_id: str) -> CheckoutSession:
+def get_session(db: Session, session_id: str, store_id: int | None = None) -> CheckoutSession:
+    """Fetches a session; with ``store_id`` a store can only see its own."""
     session = SessionRepository(db).get(session_id)
-    if session is None:
+    if session is None or (store_id is not None and session.store_id != store_id):
         raise NotFound("Session not found")
     if session.status == SessionStatus.OPEN and session.is_expired:
         session.status = SessionStatus.EXPIRED
@@ -112,7 +121,7 @@ def build_success_url(session: CheckoutSession, order: Order) -> str:
 
 
 def public_view(config: AppConfig, session: CheckoutSession, order: Order | None) -> PublicSessionOut:
-    store = config.store
+    store = store_for(config, session.store_id).settings
     card_ready = card_available(store)
     methods = [
         PaymentMethodPublic(
@@ -192,7 +201,8 @@ def complete_session(
         raise BadRequest("A valid email is required")
     if not (address.line1 and address.city and address.postal_code and address.country):
         raise BadRequest("Please complete the shipping address")
-    method = next((m for m in config.store.payment_methods if m.enabled and m.id == data.payment_method), None)
+    store = store_for(config, session.store_id).settings
+    method = next((m for m in store.payment_methods if m.enabled and m.id == data.payment_method), None)
     if method is None:
         raise BadRequest("Please choose a payment method")
 
@@ -202,7 +212,7 @@ def complete_session(
         method,
         session,
         PaymentRequest(
-            store=config.store,
+            store=store,
             customer=customer,
             address=address,
             token=data.card_token,
@@ -212,6 +222,7 @@ def complete_session(
     payment_status = payment.status
     now = utcnow()
     order = Order(
+        store_id=session.store_id,
         public_id=f"ord_{secrets.token_hex(8)}",
         session_id=session.id,
         external_ref=session.external_ref,
@@ -266,7 +277,7 @@ def complete_session(
             method.instructions,
             order=order.number,
             total=format_money(order.total, order.currency),
-            store=config.store.store_name,
+            store=store.store_name,
         )
     )
     session.status, session.order_id = SessionStatus.COMPLETE, order.public_id

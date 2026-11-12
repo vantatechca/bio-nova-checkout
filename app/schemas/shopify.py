@@ -16,6 +16,7 @@ class CartLine(BaseModel):
 
 class ShopifyCartIn(BaseModel):
     items: list[CartLine] = Field(min_length=1, max_length=50)
+    shop: Text200 = ""  # the shop's myshopify domain (``Shopify.shop``); identifies the store when the Origin cannot
     cart_token: Text200 = ""  # Shopify's cart token (``/cart.js`` -> ``token``); kept as a reference on the order
 
 

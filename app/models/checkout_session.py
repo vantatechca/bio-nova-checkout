@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, Index, String, Text
+from sqlalchemy import JSON, BigInteger, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -25,6 +25,7 @@ class CheckoutSession(Base):
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("stores.id"), index=True)  # which store sent the cart
     status: Mapped[str] = mapped_column(String(16), default=SessionStatus.OPEN)
     currency: Mapped[str] = mapped_column(String(3))
     items: Mapped[list] = mapped_column(JSON)  # snapshot of the line items sent by the store

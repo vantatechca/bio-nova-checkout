@@ -76,7 +76,8 @@ def queue_email(db: Session, config: AppConfig, email_type: str, order: Order) -
     recipient = config.email.admin_email if email_type == "admin" else order.customer_email
     if not recipient:
         return None
-    subject, body = render_email(email_type, order, config.store.store_name)
+    store = config.store_by_id(order.store_id)
+    subject, body = render_email(email_type, order, store.name if store else "Our store")
     configured = config.email.smtp.configured
     email = EmailLog(
         id=f"em_{secrets.token_hex(6)}",

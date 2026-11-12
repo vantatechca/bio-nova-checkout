@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import case, delete, func, literal_column, select
+from sqlalchemy import ColumnElement, case, delete, func, literal_column, select, true
 from sqlalchemy.orm import Session
 
 from app.models import CheckoutSession, SessionStatus, Visit
@@ -18,8 +18,17 @@ class FunnelCounts:
 
 
 class VisitRepository:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, store_id: int | None = None) -> None:
         self.db = db
+        self.store_id = store_id  # None = all stores
+
+    @property
+    def _visits(self) -> ColumnElement[bool]:
+        return Visit.store_id == self.store_id if self.store_id is not None else true()
+
+    @property
+    def _sessions(self) -> ColumnElement[bool]:
+        return CheckoutSession.store_id == self.store_id if self.store_id is not None else true()
 
     def add(self, visit: Visit) -> None:
         self.db.add(visit)
@@ -33,7 +42,9 @@ class VisitRepository:
 
     def totals(self, since: datetime) -> tuple[int, int]:
         views, visitors = self.db.execute(
-            select(func.count(Visit.id), func.count(func.distinct(Visit.visitor))).where(Visit.at >= since)
+            select(func.count(Visit.id), func.count(func.distinct(Visit.visitor))).where(
+                Visit.at >= since, self._visits
+            )
         ).one()
         return int(views), int(visitors)
 
@@ -42,7 +53,7 @@ class VisitRepository:
         local = func.date(func.date_sub(Visit.at, literal_column(f"INTERVAL {int(tz_offset_minutes)} MINUTE")))
         rows = self.db.execute(
             select(local, func.count(Visit.id), func.count(func.distinct(Visit.visitor)))
-            .where(Visit.at >= since)
+            .where(Visit.at >= since, self._visits)
             .group_by(local)
         ).all()
         return {day.isoformat(): (int(v), int(u)) for day, v, u in rows}
@@ -50,7 +61,11 @@ class VisitRepository:
     def devices(self, since: datetime, limit: int = 8) -> list[tuple[str, int]]:
         n = func.count(Visit.id)
         rows = self.db.execute(
-            select(Visit.device, n).where(Visit.at >= since).group_by(Visit.device).order_by(n.desc()).limit(limit)
+            select(Visit.device, n)
+            .where(Visit.at >= since, self._visits)
+            .group_by(Visit.device)
+            .order_by(n.desc())
+            .limit(limit)
         ).all()
         return [(label, int(c)) for label, c in rows]
 
@@ -58,7 +73,7 @@ class VisitRepository:
         label = case((Visit.referrer == "", "(direct / unknown)"), else_=Visit.referrer)
         n = func.count(Visit.id)
         rows = self.db.execute(
-            select(label, n).where(Visit.at >= since).group_by(label).order_by(n.desc()).limit(limit)
+            select(label, n).where(Visit.at >= since, self._visits).group_by(label).order_by(n.desc()).limit(limit)
         ).all()
         return [(name, int(c)) for name, c in rows]
 
@@ -72,7 +87,7 @@ class VisitRepository:
 
         created, n_viewed, n_ordered, converted = self.db.execute(
             select(func.count(s.id), count_if(viewed), count_if(ordered), count_if(viewed & ordered)).where(
-                s.created_at >= since
+                s.created_at >= since, self._sessions
             )
         ).one()
         return FunnelCounts(int(created), int(n_viewed), int(n_ordered), int(converted))

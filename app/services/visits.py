@@ -57,6 +57,7 @@ def record_visit(db: Session, config: AppConfig, session: CheckoutSession, ctx: 
                 return
             visits.add(
                 Visit(
+                    store_id=session.store_id,
                     at=now,
                     session_id=session.id,
                     visitor=visitor,

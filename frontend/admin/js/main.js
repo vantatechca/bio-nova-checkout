@@ -6,10 +6,11 @@ import { loadEmail } from './views/email.js';
 import { ORDER_TABS, initOrdersView, loadOrders } from './views/orders.js';
 import { loadRevenue } from './views/revenue.js';
 import { loadSettings } from './views/settings.js';
+import { bindStoreHooks, loadStores } from './views/stores.js';
 import { loadVisits } from './views/visits.js';
 
-const VIEWS = ['orders', 'revenue', 'email', 'visits', 'settings'];
-const LOADERS = { revenue: loadRevenue, email: loadEmail, visits: loadVisits, settings: loadSettings };
+const VIEWS = ['orders', 'revenue', 'email', 'visits', 'stores', 'settings'];
+const LOADERS = { revenue: loadRevenue, email: loadEmail, visits: loadVisits, stores: loadStores, settings: loadSettings };
 const TITLES = {
   pending: ['Pending orders', 'Awaiting payment. Orders stay here until their payment is confirmed.'],
   paid: ['Paid orders', 'Orders with payment received.'],
@@ -17,6 +18,7 @@ const TITLES = {
   revenue: ['Revenue', 'Money in, by day and by payment method.'],
   visits: ['Visits', 'How customers move through your checkout.'],
   email: ['Email', 'Customer notifications and the delivery log.'],
+  stores: ['Stores', 'Every storefront connected to this checkout.'],
   settings: ['Settings & API', 'Connect your store and configure checkout.'],
 };
 
@@ -44,11 +46,48 @@ const setMenu = (open) => {
 };
 
 // ---------------------------------------------------------------- navigation
+const selectedStore = () => state.stores.find((x) => x.id === state.store) ?? null;
+const showingAll = () => state.store === null && state.stores.length > 1;
+
+function showBrand() {
+  const store = selectedStore() ?? state.stores.find((x) => x.active) ?? state.stores[0];
+  if (!store) return;
+  applyBrand(showingAll() ? 'All stores' : store.name, showingAll() ? '' : store.logo_url ?? '');
+  $('#login-logo').textContent = store.name.trim()[0]?.toUpperCase() || 'C';
+}
+
+function renderSwitcher() {
+  $('#store-switch-wrap').classList.toggle('hide', state.stores.length < 2);
+  const select = $('#store-switch');
+  select.replaceChildren(new Option('All stores', ''));
+  for (const store of state.stores) select.append(new Option(store.name + (store.active ? '' : ' (disabled)'), String(store.id)));
+  select.value = state.store === null ? '' : String(state.store);
+}
+
+/** Re-reads the store list (after adding / disabling / deleting one) and refreshes the switcher and brand. */
+async function reloadStores() {
+  state.stores = await api('/stores');
+  if (state.store !== null && !selectedStore()) state.store = null;
+  renderSwitcher();
+  showBrand();
+}
+
+function selectStore(id) {
+  state.store = id;
+  try {
+    if (id === null) localStorage.removeItem('checkout-store');
+    else localStorage.setItem('checkout-store', String(id));
+  } catch { /* storage unavailable */ }
+  renderSwitcher();
+  showBrand();
+}
+
 async function loadBrand() {
   try {
-    const { storeName, logoUrl } = await api('/settings');
-    applyBrand(storeName, logoUrl ?? '');
-    $('#login-logo').textContent = storeName.trim()[0]?.toUpperCase() || 'C';
+    await reloadStores();
+    let saved = null;
+    try { saved = Number(localStorage.getItem('checkout-store')) || null; } catch { /* storage unavailable */ }
+    if (saved && state.stores.some((x) => x.id === saved)) selectStore(saved);
   } catch { /* the sign-in handler deals with auth errors */ }
 }
 
@@ -56,14 +95,13 @@ function render() {
   const signedIn = isSignedIn();
   $('#login').classList.toggle('hide', signedIn);
   $('#shell').classList.toggle('hide', !signedIn);
-  if (signedIn) {
-    loadBrand();
-    navigate(state.tab);
-  }
+  if (signedIn) loadBrand().finally(() => navigate(state.tab));
 }
 
 function navigate(tab) {
   state.tab = tab;
+  // Settings are per store: with "All stores" selected, show the first store's.
+  if (tab === 'settings' && showingAll()) selectStore(state.stores[0].id);
   const activeView = ORDER_TABS.includes(tab) ? 'orders' : tab;
   const [title, sub] = TITLES[tab];
   $('#page-title').textContent = title;
@@ -103,5 +141,13 @@ $('#theme-toggle').addEventListener('click', toggleTheme);
 $('#menu').addEventListener('click', () => setMenu(true));
 $('#scrim').addEventListener('click', () => setMenu(false));
 $$('.tab').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.tab)));
+$('#store-switch').addEventListener('change', (e) => {
+  selectStore(e.target.value ? Number(e.target.value) : null);
+  navigate(state.tab);
+});
+bindStoreHooks({
+  reload: reloadStores,
+  open: (id) => { selectStore(id); navigate('settings'); },
+});
 
 render();

@@ -38,6 +38,7 @@ TABLES_TO_CLEAR = (
     "email_log",
     "webhook_deliveries",
     "settings",
+    "stores",
 )
 
 

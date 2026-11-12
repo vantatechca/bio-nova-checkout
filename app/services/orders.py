@@ -14,8 +14,8 @@ from app.services.config import AppConfig
 from app.services.notifications import OrderChange
 
 
-def get_order(db: Session, key: str) -> Order:
-    order = OrderRepository(db).get(key)
+def get_order(db: Session, key: str, store_id: int | None = None) -> Order:
+    order = OrderRepository(db, store_id).get(key)
     if order is None:
         raise NotFound("Order not found")
     return order
@@ -64,9 +64,9 @@ def apply_update(order: Order, data: OrderUpdateIn) -> OrderChange:
     return change
 
 
-def update_order(db: Session, config: AppConfig, key: str, data: OrderUpdateIn) -> Order:
+def update_order(db: Session, config: AppConfig, key: str, data: OrderUpdateIn, store_id: int | None = None) -> Order:
     """Row-locks the order, applies the update and queues notifications, all in one transaction."""
-    order = OrderRepository(db).get_for_update(key)
+    order = OrderRepository(db, store_id).get_for_update(key)
     if order is None:
         raise NotFound("Order not found")
     change = apply_update(order, data)

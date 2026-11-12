@@ -1,6 +1,7 @@
 import { icon } from '/static/shared/icons.js';
 import { api } from '../api.js';
 import { refreshCounts } from '../counts.js';
+import { state } from '../state.js';
 import { $, $$, applyBrand, badge, esc, flash, formatDate } from '../util.js';
 
 const MASK = '•'.repeat(24);
@@ -13,7 +14,9 @@ export async function loadSettings() {
   const navLinks = (cfg.navLinks ?? []).map((l) => ({ ...l }));
   const base = cfg.publicUrl.replace(/\/$/, '');
 
+  const current = state.stores.find((x) => x.id === cfg.storeId);
   root.innerHTML = `
+    ${state.stores.length > 1 ? `<p class="muted notice">Editing settings for <b>${esc(current?.name ?? cfg.storeName)}</b>. Use the store switcher in the sidebar to edit another store.</p>` : ''}
     <div class="card"><div class="card-head"><div><h2>Connect your store</h2><p class="sub" style="margin:0">API key for server-to-server calls. Not for browser code.</p></div>
       <button class="primary" data-role="test-checkout">${icon('package')} Create test checkout</button></div>
       <label>API key</label>
@@ -213,6 +216,10 @@ export async function loadSettings() {
     });
     const name = field('storeName').value || 'Orders';
     applyBrand(name, field('logoUrl').value);
+    const known = state.stores.find((x) => x.id === cfg.storeId);
+    if (known) { known.name = name; known.logo_url = field('logoUrl').value; }
+    const option = [...document.querySelectorAll('#store-switch option')].find((o) => o.value === String(cfg.storeId));
+    if (option) option.textContent = name;
   };
   $('[data-role=save]', root).addEventListener('click', async () => {
     const message = $('[data-role=save-msg]', root);

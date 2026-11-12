@@ -237,14 +237,15 @@ class TestSigning:
     def test_existing_installs_get_the_new_settings_backfilled_once(self, h):
         """Settings rows saved before card support existed must gain a *persistent* signing secret."""
         from app.database import session_scope
-        from app.repositories import SettingsRepository
+        from app.repositories import StoreRepository
         from app.services.config import config_service, ensure_defaults
 
         with session_scope() as db:
-            row = SettingsRepository(db).all()["store"]
+            store = StoreRepository(db).list()[0]
+            row = dict(store.settings)
             for key in ("clientApiSecret", "clientApiUrl", "cardProvider", "cardPublicKey"):
                 row.pop(key, None)
-            SettingsRepository(db).set("store", row)
+            store.settings = row
         config_service.invalidate()
         with session_scope() as db:
             ensure_defaults(db)
@@ -252,7 +253,7 @@ class TestSigning:
         first = h.client.get("/api/admin/settings", headers=h.admin).json()["clientApiSecret"]
         config_service.invalidate()
         assert h.client.get("/api/admin/settings", headers=h.admin).json()["clientApiSecret"] == first
-        assert h.sql("SELECT COUNT(*) FROM settings WHERE k = 'store'")[0][0] == 1
+        assert h.sql("SELECT COUNT(*) FROM stores")[0][0] == 1
 
 
 def public_view(h, session_id):

@@ -31,6 +31,7 @@ class OrderOut(BaseModel):
 
     id: str
     number: int
+    store_id: int
     session_id: str
     external_ref: str
     status: str
