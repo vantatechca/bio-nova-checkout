@@ -38,8 +38,13 @@ export async function loadStores() {
       <p class="sub">Each store gets its own API key, branding, payment setup and webhook. Orders and visits stay separate.</p>
       <form id="store-add" style="display:flex;gap:10px;flex-wrap:wrap">
         <input id="store-name" placeholder="Store name, e.g. Bionova Club" maxlength="100" required style="flex:1;min-width:220px;margin:0">
+        <select id="store-copy" aria-label="Copy settings from" style="margin:0;min-width:240px">
+          <option value="">Start with default settings</option>
+          ${state.stores.map((s) => `<option value="${s.id}">Copy settings from ${esc(s.name)}</option>`).join('')}
+        </select>
         <button class="primary">${icon('check')} Add store</button>
       </form>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">Copying brings over card &amp; payment setup (including the client API URL and signing secret), shipping/tax and branding. The new store still gets its own API key, webhook, website and Shopify domain/token.</p>
       <span class="msg" id="store-msg"></span>
     </div>`;
   hydrateIcons(root);
@@ -47,7 +52,7 @@ export async function loadStores() {
   $('#store-add', root).addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-      const created = await api('/stores', { method: 'POST', body: { name: $('#store-name', root).value.trim() } });
+      const created = await api('/stores', { method: 'POST', body: { name: $('#store-name', root).value.trim(), copy_from: Number($('#store-copy', root).value) || null } });
       await hooks.reload();
       hooks.open(created.id); // straight to its settings: that's where the Shopify link and card setup go
     } catch (err) { flash($('#store-msg', root), false, err.message); }

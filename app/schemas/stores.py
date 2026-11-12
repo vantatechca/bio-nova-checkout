@@ -9,6 +9,7 @@ from app.schemas.common import Text100
 
 class StoreCreateIn(BaseModel):
     name: Text100 = Field(min_length=1)
+    copy_from: int | None = None  # id of a store whose card/payment, shipping and branding settings to start from
 
 
 class StoreActiveIn(BaseModel):

@@ -41,7 +41,7 @@ def list_stores(db: DbSession, config: Config):
 
 @router.post("", response_model=StoreOut, status_code=201)
 def create_store(data: StoreCreateIn, db: DbSession):
-    row = stores.create_store(db, data.name)
+    row = stores.create_store(db, data.name, copy_from=data.copy_from)
     config_service.invalidate()
     record = next(r for r in config_service.get(db).stores if r.id == row.id)
     return _out(record, 0)

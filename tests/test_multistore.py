@@ -110,6 +110,44 @@ class TestStoresAreSeparate:
         assert r.status_code == 400
 
 
+class TestCopyingSettings:
+    def test_a_copied_store_inherits_card_and_branding_but_not_identity(self, h):
+        source = h.client.get("/api/admin/stores", headers=h.admin).json()[0]
+        h.configure(
+            storeName="Source",
+            notice="Shared notice",
+            shippingFlat=700,
+            clientApiUrl="https://pay.example.com/charge",
+            cardProvider="embed",
+            cardFormUrl="https://pay.example.com/form",
+            storeUrl=A_URL,
+            shopifyDomain="source.myshopify.com",
+            shopifyStorefrontToken="tok_source",
+            webhookUrl="https://hooks.example.com/source",
+        )
+        r = h.client.post("/api/admin/stores", headers=h.admin, json={"name": "Copy", "copy_from": source["id"]})
+        assert r.status_code == 201, r.text
+        new, old = settings_of(h, r.json()["id"]), settings_of(h, source["id"])
+
+        for shared in ("notice", "shippingFlat", "clientApiUrl", "cardProvider", "cardFormUrl", "clientApiSecret"):
+            assert new[shared] == old[shared], shared
+        assert new["storeName"] == "Copy"
+        for own in ("apiKey", "webhookSecret"):
+            assert new[own] != old[own], own
+        assert new["shopifyDomain"] == "" and new["shopifyStorefrontToken"] == ""
+        assert new["storeUrl"] == "" and new["webhookUrl"] == ""
+
+    def test_the_source_store_is_left_untouched(self, h):
+        source = h.client.get("/api/admin/stores", headers=h.admin).json()[0]
+        before = settings_of(h, source["id"])
+        h.client.post("/api/admin/stores", headers=h.admin, json={"name": "Copy", "copy_from": source["id"]})
+        assert settings_of(h, source["id"]) == before
+
+    def test_copying_from_an_unknown_store_is_a_404(self, h):
+        r = h.client.post("/api/admin/stores", headers=h.admin, json={"name": "X", "copy_from": 999})
+        assert r.status_code == 404
+
+
 class TestPerStoreConfiguration:
     def test_branding_and_payment_methods_follow_the_stores_settings(self, h, two):
         first, second = two

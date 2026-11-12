@@ -39,6 +39,9 @@ connection. Orders, checkout sessions and visits are stored per store; a store's
 
 - The **store switcher** in the sidebar filters orders, revenue and visits to one store (or *All stores*). *Settings & API*
   always edits the selected store.
+- **Copy settings from…** when adding a store starts it with another store's card/payment setup (including the client API
+  URL and signing secret), shipping/tax and branding. It still gets its own API key, webhook, website and Shopify
+  domain/token. After copying, the stores are independent.
 - Disabling a store stops its API key and Shopify button working; stores that have orders can be disabled but not deleted.
 - Each store needs its own website / Shopify domain (two stores can't claim the same one).
 - Shared across stores: the admin login, SMTP/email settings, and the order-number sequence (#1001, #1002, … is global).
