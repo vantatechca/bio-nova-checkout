@@ -119,7 +119,10 @@ Shoppers who click **Checkout** on your Shopify store are redirected to this che
    ```html
    <script src="https://YOUR-CHECKOUT-DOMAIN/static/shopify/checkout-redirect.js" defer></script>
    ```
-4. Turn off dynamic checkout buttons (Shop Pay, Apple Pay) if your theme shows them; the script hides the usual ones.
+4. **Buy it now on product pages:** Shopify's dynamic checkout buttons (Shop Pay, Apple Pay, *Buy it now*) skip this checkout, so the
+   script hides them and puts its own **Buy it now** button in their place. It checks out only that product (the variant and
+   quantity chosen on the page) and leaves the cart alone. A theme's own custom button labelled *Buy it now* / *Buy now* is picked up automatically (it uses the page's variant and quantity); for
+   any other label, add the attribute `data-checkout-buy-now` to it. Add `data-keep-dynamic-buttons` to the `<script>` tag to leave Shopify's buttons untouched.
 
 The same one-line script works for every store: the checkout recognises which store a cart belongs to from the page's origin
 (its *Store website*) or, failing that, the `Shopify.shop` domain the script reports. With a single store nothing needs matching.
