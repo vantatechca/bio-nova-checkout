@@ -51,7 +51,7 @@ class StoreRecord:
 
 
 def merged_settings(own: dict, shared: dict) -> StoreSettings:
-    """A store's full settings: its own (branding, Shopify, API key) plus the settings shared by all stores."""
+    """A store's full settings: its own (branding, Shopify) plus the settings shared by all stores."""
     return StoreSettings.model_validate({**own, **shared})
 
 
@@ -87,13 +87,14 @@ class AppConfig:
     def store_by_id(self, store_id: int) -> StoreRecord | None:
         return next((s for s in self.stores if s.id == store_id), None)
 
-    def store_by_api_key(self, key: str) -> StoreRecord | None:
-        """Constant-time comparison against every store, so response time doesn't reveal key prefixes."""
-        match = None
-        for store in self.stores:
-            if hmac.compare_digest(store.settings.api_key.encode(), key.encode()):
-                match = store
-        return match
+    def api_key_matches(self, key: str) -> bool:
+        """The API key is shared by all stores. Constant-time comparison."""
+        return hmac.compare_digest(self.default_store.settings.api_key.encode(), key.encode())
+
+    def store_by_ref(self, ref: str) -> StoreRecord | None:
+        """A store by id or slug (the ``X-Checkout-Store`` header)."""
+        ref = ref.strip()
+        return next((s for s in self.stores if str(s.id) == ref or s.slug == ref), None)
 
     def stores_for_origin(self, origin: str) -> list[StoreRecord]:
         return [s for s in self.stores if s.active and origin in s.origins]
@@ -107,7 +108,6 @@ def mirror_columns(row: Store, settings: StoreSettings) -> None:
     """Saves the store's own settings and keeps the indexed columns on ``Store`` in step with them."""
     row.settings = split_settings(settings)[0]
     row.name = settings.store_name
-    row.api_key = settings.api_key
     row.shopify_domain = settings.shopify_domain or None
 
 
@@ -126,8 +126,12 @@ def ensure_defaults(db: Session) -> None:
 
     # Shared settings: seeded once from the first store (so an install that predates sharing keeps what it had).
     first = store_repo.list()[0]
+    legacy_key = first.settings.get("apiKey")  # installs that predate the shared API key keep the first store's key
     seed = split_settings(StoreSettings.model_validate(first.settings))[1]
     repo.insert_if_missing(_SHARED, seed)
+    current = repo.all()[_SHARED]
+    if legacy_key and "apiKey" not in current:
+        repo.set(_SHARED, {**current, "apiKey": legacy_key})
 
     # Settings introduced by newer versions (e.g. the client-API signing secret) are generated once and saved here,
     # instead of being re-generated every time the configuration is loaded.

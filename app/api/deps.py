@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, Query, Request
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.errors import NotFound, Unauthorized
+from app.errors import BadRequest, NotFound, Unauthorized
 from app.security import AdminTokens, bearer_token
 from app.services.config import AppConfig, StoreRecord, config_service
 
@@ -26,18 +27,32 @@ def get_config(db: DbSession) -> AppConfig:
 Config = Annotated[AppConfig, Depends(get_config)]
 
 
-def authenticated_store(request: Request, config: Config) -> StoreRecord:
-    """Server-to-server calls from a store authenticate with that store's API key (Bearer or X-API-Key)."""
+@dataclass(frozen=True)
+class ApiCaller:
+    """An authenticated server-to-server call. ``store`` is where new sessions go; ``scope`` limits reads."""
+
+    store: StoreRecord
+    scope: int | None  # store id when the caller named a store, else None (every store)
+
+
+def authenticated_store(request: Request, config: Config) -> ApiCaller:
+    """Server-to-server calls authenticate with the shared API key (Bearer or X-API-Key).
+
+    ``X-Checkout-Store`` (store id or slug) picks the store; without it new sessions go to the default store and
+    lookups cover every store."""
     key = bearer_token(request) or request.headers.get("x-api-key", "")
-    store = config.store_by_api_key(key) if key else None
-    if store is None:
+    if not key or not config.api_key_matches(key):
         raise Unauthorized("Invalid or missing API key")
+    ref = request.headers.get("x-checkout-store", "").strip()
+    store = config.store_by_ref(ref) if ref else config.default_store
+    if store is None:
+        raise BadRequest("Unknown store in X-Checkout-Store")
     if not store.active:
         raise Unauthorized("This store is disabled")
-    return store
+    return ApiCaller(store=store, scope=store.id if ref else None)
 
 
-ApiStore = Annotated[StoreRecord, Depends(authenticated_store)]
+ApiStore = Annotated[ApiCaller, Depends(authenticated_store)]
 
 
 def require_admin(request: Request, config: Config) -> None:

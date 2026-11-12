@@ -13,19 +13,21 @@ export async function loadSettings() {
   const paymentMethods = cfg.paymentMethods.map((m) => ({ ...m }));
   const navLinks = (cfg.navLinks ?? []).map((l) => ({ ...l }));
   const base = cfg.publicUrl.replace(/\/$/, '');
+  const slug = state.stores.find((x) => x.id === cfg.storeId)?.slug ?? '';
+  const storeHeader = state.stores.length > 1 ? `-H "X-Checkout-Store: ${esc(slug)}" ` : '';
 
   root.innerHTML = `
     ${state.stores.length > 1 ? `<div class="card"><label style="margin:0">Editing settings for
       <select data-role="settings-store" style="max-width:360px">${state.stores.map((x) => `<option value="${x.id}" ${x.id === cfg.storeId ? 'selected' : ''}>${esc(x.name)}${x.active ? '' : ' (disabled)'}</option>`).join('')}</select></label>
-      <p class="muted" style="font-size:13px;margin:8px 0 0"><span class="scope own">This store only</span>: API key, Branding and Shopify. <span class="scope shared">Shared by all stores</span>: card payments, store &amp; checkout defaults and webhooks &mdash; change them once and every store uses them.</p></div>` : ''}
-    <div class="card"><div class="card-head"><div><h2>Connect your store <span class="scope own">This store only</span></h2><p class="sub" style="margin:0">API key for server-to-server calls. Not for browser code.</p></div>
+      <p class="muted" style="font-size:13px;margin:8px 0 0"><span class="scope own">This store only</span>: Branding and Shopify. <span class="scope shared">Shared by all stores</span>: API key, card payments, store &amp; checkout defaults and webhooks &mdash; change them once and every store uses them.</p></div>` : ''}
+    <div class="card"><div class="card-head"><div><h2>Connect your store <span class="scope shared">Shared by all stores</span></h2><p class="sub" style="margin:0">One API key for server-to-server calls, for every store. Not for browser code.</p></div>
       <button class="primary" data-role="test-checkout">${icon('package')} Create test checkout</button></div>
       <label>API key</label>
       <div class="secret"><div class="mono" data-role="api-key">${MASK}</div><button data-role="show-key">Show</button><button class="danger" data-role="rotate-key">Rotate</button></div>
       <span class="msg" data-role="test-msg"></span>
       <h3>Create a checkout session</h3>
       <pre class="mono">curl -X POST ${esc(base)}/api/v1/checkout/sessions \\
-  -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" ${storeHeader}-H "Content-Type: application/json" \\
   -d '{"items":[{"name":"Shirt","unit_amount":2500,"quantity":2}],"success_url":"https://yourstore.com/thanks","cancel_url":"https://yourstore.com/cart","external_ref":"cart_123"}'</pre>
       <p class="muted" style="font-size:13.5px;margin-top:10px">The response contains <code>checkout_url</code>, the page the customer is sent to. Amounts are in minor units (cents).</p>
     </div>

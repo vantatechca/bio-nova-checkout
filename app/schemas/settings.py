@@ -274,11 +274,9 @@ class EmailTestIn(BaseModel):
 
 
 # Which store settings belong to one store and which are shared by every store on this checkout.
-# (The API key stays per store: it is what tells the server which store is calling.)
 STORE_ONLY_FIELDS = frozenset(
     {
         "store_name",
-        "api_key",
         "logo_url",
         "store_url",
         "nav_links",

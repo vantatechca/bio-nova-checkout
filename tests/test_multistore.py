@@ -25,7 +25,8 @@ def settings_of(h, store_id: int) -> dict:
 
 
 def key_of(h, store_id: int) -> dict[str, str]:
-    return {"Authorization": f"Bearer {settings_of(h, store_id)['apiKey']}"}
+    """The shared API key, naming the store the call is about."""
+    return {"Authorization": f"Bearer {settings_of(h, store_id)['apiKey']}", "X-Checkout-Store": str(store_id)}
 
 
 def order_for(h, store_id: int, method="bank") -> dict:
@@ -59,9 +60,39 @@ class TestStoresAreSeparate:
         stores = h.client.get("/api/admin/stores", headers=h.admin).json()
         assert len(stores) == 1 and stores[0]["active"]
 
-    def test_each_store_has_its_own_api_key(self, h, two):
+    def test_all_stores_share_one_api_key(self, h, two):
         first, second = two
-        assert settings_of(h, first["id"])["apiKey"] != settings_of(h, second["id"])["apiKey"]
+        assert settings_of(h, first["id"])["apiKey"] == settings_of(h, second["id"])["apiKey"]
+
+    def test_the_store_header_accepts_an_id_or_a_slug_and_rejects_unknowns(self, h, two):
+        _first, second = two
+        key = {"Authorization": f"Bearer {settings_of(h, second['id'])['apiKey']}"}
+        body = {"items": [{"name": "X", "unit_amount": 100, "quantity": 1}], "success_url": "https://x.test/ok"}
+        by_slug = h.client.post(
+            "/api/v1/checkout/sessions", headers={**key, "X-Checkout-Store": second["slug"]}, json=body
+        )
+        assert by_slug.status_code == 201
+        assert (
+            h.client.get(
+                f"/api/v1/checkout/sessions/{by_slug.json()['id']}", headers=key_of(h, second["id"])
+            ).status_code
+            == 200
+        )
+        assert (
+            h.client.post(
+                "/api/v1/checkout/sessions", headers={**key, "X-Checkout-Store": "nope"}, json=body
+            ).status_code
+            == 400
+        )
+
+    def test_without_the_header_sessions_go_to_the_default_store_and_lookups_cover_all(self, h, two):
+        first, second = two
+        key = {"Authorization": f"Bearer {settings_of(h, first['id'])['apiKey']}"}
+        body = {"items": [{"name": "X", "unit_amount": 100, "quantity": 1}], "success_url": "https://x.test/ok"}
+        made = h.client.post("/api/v1/checkout/sessions", headers=key, json=body).json()
+        assert h.client.get(f"/api/v1/checkout/sessions/{made['id']}", headers=key).status_code == 200
+        b = order_for(h, second["id"])
+        assert h.client.get(f"/api/v1/orders/{b['number']}", headers=key).status_code == 200
 
     def test_orders_belong_to_the_store_whose_key_created_them(self, h, two):
         first, second = two
@@ -138,7 +169,7 @@ class TestSharedSettings:
             assert a[field] == b[field], field
         assert b["shippingFlat"] == 700
 
-    def test_branding_shopify_and_api_key_stay_per_store(self, h, two):
+    def test_branding_and_shopify_stay_per_store(self, h, two):
         first, second = two
         h.client.put(
             f"/api/admin/settings?store={first['id']}",
@@ -155,7 +186,6 @@ class TestSharedSettings:
         b = settings_of(h, second["id"])
         assert b["storeName"] == "Beta Shop" and b["notice"] == "" and b["logoUrl"] == ""
         assert b["storeUrl"] == "" and b["shopifyDomain"] == "" and b["shopifyStorefrontToken"] == ""
-        assert settings_of(h, first["id"])["apiKey"] != b["apiKey"]
 
     def test_rotating_the_signing_secret_changes_it_for_every_store(self, h, two):
         first, second = two
@@ -189,7 +219,7 @@ class TestSharedSettings:
         assert r.status_code == 201, r.text
         new = settings_of(h, r.json()["id"])
         assert new["notice"] == "Shared notice" and new["logoUrl"] == "https://s.example/l.png"
-        assert new["storeName"] == "Copy" and new["apiKey"] != settings_of(h, source["id"])["apiKey"]
+        assert new["storeName"] == "Copy"
         assert new["storeUrl"] == "" and new["shopifyDomain"] == "" and new["shopifyStorefrontToken"] == ""
 
     def test_copying_from_an_unknown_store_is_a_404(self, h):
@@ -272,12 +302,12 @@ class TestPerStoreConfiguration:
         )
         assert r.status_code == 400
 
-    def test_rotating_a_key_only_affects_that_store(self, h, two):
+    def test_rotating_the_api_key_changes_it_for_every_store(self, h, two):
         first, second = two
-        old_first = key_of(h, first["id"])
+        old = settings_of(h, first["id"])["apiKey"]
         r = h.client.post(f"/api/admin/settings/rotate-key?store={second['id']}", headers=h.admin)
-        assert r.status_code == 200 and r.json()["apiKey"] != settings_of(h, first["id"])["apiKey"]
-        assert key_of(h, first["id"]) == old_first
+        assert r.status_code == 200 and r.json()["apiKey"] != old
+        assert settings_of(h, first["id"])["apiKey"] == r.json()["apiKey"]
 
     def test_unknown_store_is_a_404(self, h):
         assert h.client.get("/api/admin/settings?store=9999", headers=h.admin).status_code == 404
@@ -420,7 +450,7 @@ class TestMigration:
                     "shopifyDomain": "legacy.myshopify.com",
                 }
                 conn.execute(
-                    text("DELETE FROM settings WHERE k = 'store'"),
+                    text("DELETE FROM settings WHERE k IN ('store', 'shared')"),
                 )
                 conn.execute(text("INSERT INTO settings (k, v) VALUES ('store', :v)"), {"v": json.dumps(legacy)})
                 conn.execute(
@@ -431,10 +461,22 @@ class TestMigration:
                 )
             command.upgrade(cfg, "head")
             with engine.connect() as conn:
-                store = conn.execute(text("SELECT id, name, api_key, shopify_domain FROM stores")).one()
+                store = conn.execute(text("SELECT id, name, shopify_domain FROM stores")).one()
                 visit_store = conn.execute(text("SELECT store_id FROM visits")).scalar_one()
                 legacy_rows = conn.execute(text("SELECT COUNT(*) FROM settings WHERE k = 'store'")).scalar_one()
-            assert tuple(store) == (1, "Legacy Shop", "sk_legacy_key", "legacy.myshopify.com")
+            assert tuple(store) == (1, "Legacy Shop", "legacy.myshopify.com")
+            config_service.invalidate()
+            with engine.begin() as conn:
+                from sqlalchemy.orm import Session
+
+                from app.services.config import ensure_defaults
+
+                with Session(conn) as session:
+                    ensure_defaults(session)
+                    session.flush()
+            with engine.connect() as conn:
+                shared = json.loads(conn.execute(text("SELECT v FROM settings WHERE k = 'shared'")).scalar_one())
+            assert shared["apiKey"] == "sk_legacy_key"
             assert visit_store == 1 and legacy_rows == 0
         finally:
             command.upgrade(cfg, "head")

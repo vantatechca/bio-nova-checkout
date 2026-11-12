@@ -51,7 +51,6 @@ def create_store(db: Session, name: str, slug: str | None = None, copy_from: int
         slug=_unique_slug(repo, slugify(slug or name)),
         name=settings.store_name,
         active=True,
-        api_key=settings.api_key,
         shopify_domain=None,
         settings=split_settings(settings)[0],
         created_at=utcnow(),

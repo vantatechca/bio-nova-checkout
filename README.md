@@ -35,20 +35,19 @@ Your **API key**, webhook secret, payment methods, shipping/tax defaults and SMT
 
 One deployment can serve any number of stores. **Admin → Stores → Add a store** creates one.
 
-- **Per store:** API key, branding (name, logo, menu links, checkout notice), website and Shopify connection (domain +
-  Storefront token). Orders, checkout sessions and visits are stored per store, and a store's API key only ever reaches
-  that store's data.
-- **Shared by all stores:** card payments (provider, client API URL, signing secret), payment methods, shipping & tax
+- **Per store:** branding (name, logo, menu links, checkout notice), website and Shopify connection (domain +
+  Storefront token). Orders, checkout sessions and visits are stored per store.
+- **Shared by all stores:** the API key, card payments (provider, client API URL, signing secret), payment methods, shipping & tax
   defaults, allowed redirect domains and webhooks. Edit them once and every store uses them; each webhook payload carries
   `data.store_id` so the receiver can tell stores apart. The client therefore needs one payment endpoint and one signing
   secret.
 - The **store filter** at the top of the Pending, Paid, Failed, Revenue and Visits tabs filters orders, revenue and visits to one store (or *All stores*). *Settings & API*
   has its own "Editing settings for" store dropdown (only the per-store sections change with it).
 - **Copy branding from…** when adding a store starts it with another store's logo, menu links and notice.
-- Disabling a store stops its API key and Shopify button working; stores that have orders can be disabled but not deleted.
+- Disabling a store stops its Shopify button and API calls naming it working; stores that have orders can be disabled but not deleted.
 - Each store needs its own website / Shopify domain (two stores can't claim the same one).
 - Also shared: the admin login, SMTP/email settings, and the order-number sequence (#1001, #1002, … is global).
-- Upgrading a single-store install is automatic: its settings become store #1 and keep the same API key, so existing
+- Upgrading a single-store install is automatic: its settings become store #1 and keep the same API key (now shared by all stores), so existing
   integrations continue to work.
 
 ## How a store connects
@@ -63,7 +62,7 @@ Build the cart on **your server** from your own catalog — never trust prices s
 
 ## API (server-to-server)
 
-Auth: `Authorization: Bearer <API key>` (or `X-API-Key`). Amounts are integers in minor units (cents).
+Auth: `Authorization: Bearer <API key>` (or `X-API-Key`); one key serves every store. Add `X-Checkout-Store: <store id or slug>` to say which store a call is about (new sessions go to the first active store without it; with it, reads are limited to that store). Amounts are integers in minor units (cents).
 Interactive docs: `/api/docs`. Errors are `{"error": "message"}` with a 4xx status.
 
 ### `POST /api/v1/checkout/sessions`
@@ -256,6 +255,6 @@ A test fails if the models and migrations drift apart.
 - Serve behind HTTPS and set `PUBLIC_URL` (and `TRUST_PROXY=true` behind a reverse proxy).
 - Set a strong `ADMIN_PASSWORD`, and set **Allowed redirect domains** to your store's domain.
 - Use a dedicated MySQL user (not root) and schedule database backups — MySQL now holds all your data.
-- Settings (store API keys in `stores`, SMTP password in `settings`) are stored unencrypted — restrict database access.
+- Settings (the API key in `settings`, SMTP password in `settings`) are stored unencrypted — restrict database access.
 - Login throttling is per process; with several instances put rate limiting at the proxy as well.
 - Currencies are assumed to have two decimal places.
