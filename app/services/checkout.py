@@ -172,7 +172,7 @@ def public_view(config: AppConfig, session: CheckoutSession, order: Order | None
 
 
 REDIRECT_PENDING = (
-    "We're waiting for your payment to be confirmed. If you didn't finish paying, please contact the store."
+    "We're waiting for your payment to be confirmed. If you didn't finish paying, please use the chat on our store."
 )
 
 
