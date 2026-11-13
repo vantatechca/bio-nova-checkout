@@ -117,10 +117,7 @@ function summaryHtml() {
       <div class="item-price num">${money(item.unit_amount * item.quantity)}</div>
     </div>`).join('');
   return `
-    <button type="button" class="summary-toggle" id="summary-toggle" aria-expanded="false" aria-controls="summary">
-      <span class="t">${icon('receipt')} Show order summary ${icon('chevron-down', 'chev')}</span><b class="num">${money(session.total)}</b>
-    </button>
-    <aside class="summary collapsed" id="summary">
+    <aside class="summary" id="summary">
       <div class="summary-head"><h2>Order summary</h2><span>${count} ${count === 1 ? 'item' : 'items'}</span></div>
       <div class="items">${items}</div>
       <div class="totals">
@@ -130,23 +127,6 @@ function summaryHtml() {
         <div class="line total"><span>Total</span><span class="num"><small>${esc(session.currency)}</small>${money(session.total)}</span></div>
       </div>
     </aside>`;
-}
-
-function wireSummaryToggle() {
-  const toggle = document.querySelector('#summary-toggle');
-  const summary = document.querySelector('#summary');
-  const desktop = window.matchMedia('(min-width: 921px)');
-  const sync = () => {
-    if (desktop.matches) summary.classList.remove('collapsed');
-    else if (toggle.getAttribute('aria-expanded') !== 'true') summary.classList.add('collapsed');
-  };
-  toggle.addEventListener('click', () => {
-    const open = toggle.getAttribute('aria-expanded') !== 'true';
-    toggle.setAttribute('aria-expanded', String(open));
-    summary.classList.toggle('collapsed', !open);
-  });
-  desktop.addEventListener('change', sync);
-  sync();
 }
 
 // ---------------------------------------------------------------- payment options
@@ -277,7 +257,6 @@ function renderForm() {
     </form>
     <div class="summary-col">${summaryHtml()}${trustHtml()}</div>`;
   document.querySelector('#checkout-form').addEventListener('submit', submitOrder);
-  wireSummaryToggle();
   wirePaymentMethods();
   wireRegionPicker();
 }

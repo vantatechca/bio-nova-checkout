@@ -168,7 +168,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .line.total .num { color: var(--brand); font-size: 30px; font-weight: 900; letter-spacing: -0.02em; text-transform: none; }
 .line.total small { font-size: 12px; font-weight: 700; color: var(--text-3); margin-right: 8px; letter-spacing: 0.06em; }
 .free { color: var(--ok); font-weight: 800; }
-.summary-toggle { display: none; }
 
 /* ---------- Loading / message cards ---------- */
 .state-card { grid-column: 1 / -1; justify-self: center; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 44px 36px; max-width: 460px; }
@@ -215,12 +214,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
   .stepper { padding: 18px 20px 0; }
   .layout { grid-template-columns: 1fr; padding: 18px 20px 40px; gap: 18px; }
   .summary-col { position: static; order: -1; }
-  .summary-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 54px; padding: 12px 18px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); }
-  .summary-toggle .t { display: inline-flex; align-items: center; gap: 8px; color: var(--brand); text-transform: uppercase; letter-spacing: 0.05em; font-size: 13px; font-weight: 800; }
-  .summary-toggle .chev { transition: transform 0.2s ease; }
-  .summary-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
-  .summary { margin-top: 10px; }
-  .summary.collapsed { display: none; }
   .trust-side { display: none; }
   .trust-below { display: grid; }
 }
