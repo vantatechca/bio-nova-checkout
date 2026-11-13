@@ -52,6 +52,7 @@ class Order(Base):
     payment_method_label: Mapped[str] = mapped_column(String(80))
     payment_instructions: Mapped[str] = mapped_column(Text, default="")
     payment_reference: Mapped[str] = mapped_column(String(200), default="")
+    payment_url: Mapped[str | None] = mapped_column(Text, nullable=True)  # redirect flow: the client's payment page
 
     currency: Mapped[str] = mapped_column(String(3))
     subtotal: Mapped[int] = mapped_column(BigInteger)

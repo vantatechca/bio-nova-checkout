@@ -84,7 +84,7 @@ async function init() {
     return showMessage({ title: 'This checkout has expired', text: 'Please return to the store and start again.' });
   }
   if (session.status === 'complete') {
-    showConfirmation(session.order_number, session.success_url, session.payment_status === 'paid' ? '' : session.payment_instructions);
+    showConfirmation(session.order_number, session.success_url, session.payment_status === 'paid' ? '' : session.payment_instructions, session.payment_url);
     if (session.payment_status === 'pending' && session.card?.provider === 'redirect') pollUntilPaid();
     return;
   }
@@ -217,6 +217,14 @@ function wirePaymentMethods() {
   syncCardFields();
 }
 
+// ---------------------------------------------------------------- trust
+const trustHtml = (cls = 'trust-side') => `
+  <ul class="trust ${cls}" aria-label="Checkout security">
+    <li>${icon('lock')}<div><b>Secure, encrypted checkout</b><span>Your connection to this page is protected with HTTPS.</span></div></li>
+    <li>${icon('shield')}<div><b>Your card details stay private</b><span>Card numbers go straight to our payment partner and are never stored here.</span></div></li>
+    <li>${icon('package')}<div><b>Your order number right away</b><span>You'll see your order number as soon as you place your order. Questions? Contact the store.</span></div></li>
+  </ul>`;
+
 // ---------------------------------------------------------------- form
 function renderForm() {
   const customer = session.customer || {};
@@ -227,9 +235,9 @@ function renderForm() {
     <form class="flow" id="checkout-form" novalidate>
       ${noticeHtml()}
       <section class="panel">
-        <div class="panel-head"><h2>Contact</h2><p>We'll send your receipt and updates here.</p></div>
+        <div class="panel-head"><h2><span class="num-badge">1</span>Contact</h2><p>We'll send your receipt and updates here.</p></div>
         <fieldset>
-          <label><span class="req">Full name</span><input name="name" autocomplete="name" placeholder="Ada Lovelace" required value="${esc(customer.name)}"></label>
+          <label><span class="req">Full name</span><input name="name" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="Ada Lovelace" required value="${esc(customer.name)}"></label>
           <div class="row">
             <label><span class="req">Email</span><input name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required value="${esc(customer.email)}"></label>
             <label>Phone <span class="hint">(optional)</span><input name="phone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" value="${esc(customer.phone)}"></label>
@@ -238,25 +246,25 @@ function renderForm() {
       </section>
 
       <section class="panel">
-        <div class="panel-head"><h2>Shipping address</h2><p>Where should we send your order?</p></div>
+        <div class="panel-head"><h2><span class="num-badge">2</span>Shipping address</h2><p>Where should we send your order?</p></div>
         <fieldset>
-          <label><span class="req">Address</span><input name="line1" autocomplete="address-line1" placeholder="123 Main Street" required></label>
+          <label><span class="req">Address</span><input name="line1" autocomplete="address-line1" autocapitalize="words" enterkeyhint="next" placeholder="123 Main Street" required></label>
           <label>Apartment, suite, etc. <span class="hint">(optional)</span><input name="line2" autocomplete="address-line2"></label>
           <div class="row">
-            <label><span class="req">City</span><input name="city" autocomplete="address-level2" required></label>
+            <label><span class="req">City</span><input name="city" autocomplete="address-level2" autocapitalize="words" enterkeyhint="next" required></label>
             <label><span class="req">Country</span><select name="country" autocomplete="country-name" required>
               ${countries().length > 1 ? '<option value="">Select a country</option>' : ''}${countries().map((c) => `<option>${esc(c)}</option>`).join('')}
             </select></label>
           </div>
           <div class="row">
             <label data-role="state-field">State / Province<input name="state" autocomplete="address-level1"></label>
-            <label><span class="req">Postal code</span><input name="postal_code" autocomplete="postal-code" required></label>
+            <label><span class="req">Postal code</span><input name="postal_code" autocomplete="postal-code" inputmode="numeric" enterkeyhint="done" required></label>
           </div>
         </fieldset>
       </section>
 
       <section class="panel">
-        <div class="panel-head"><h2>Payment</h2><p>${session.paymentMethods.length === 1 ? 'Enter your card details to pay.' : "Choose how you'd like to pay."}</p></div>
+        <div class="panel-head"><h2><span class="num-badge">3</span>Payment</h2><p>${session.paymentMethods.length === 1 ? 'Enter your card details to pay.' : "Choose how you'd like to pay."}</p></div>
         <fieldset>${paymentMethodsHtml()}</fieldset>
         <div style="margin-top:22px">
           <p class="error" id="error" role="alert"></p>
@@ -265,9 +273,9 @@ function renderForm() {
           ${cancelUrl ? `<a class="back" href="${esc(cancelUrl)}">← Return to store</a>` : ''}
         </div>
       </section>
-      <div class="secure-row">${icon('shield')} Secure checkout</div>
+      ${trustHtml('trust-below')}
     </form>
-    <div class="summary-col">${summaryHtml()}</div>`;
+    <div class="summary-col">${summaryHtml()}${trustHtml()}</div>`;
   document.querySelector('#checkout-form').addEventListener('submit', submitOrder);
   wireSummaryToggle();
   wirePaymentMethods();
@@ -344,18 +352,20 @@ function chip(label, value) {
   return `<span class="chip">${label} <b>${esc(value)}</b><button type="button" data-copy="${esc(value)}">${icon('copy')} Copy</button></span>`;
 }
 
-function showConfirmation(orderNumber, successUrl, paymentInstructions) {
+function showConfirmation(orderNumber, successUrl, paymentInstructions, paymentUrl = '') {
   const url = safeHttpUrl(successUrl);
+  const payAgain = safeHttpUrl(paymentUrl);
   const owing = Boolean(paymentInstructions);
   setStepper(3); // all steps complete
   app.className = 'layout single';
   app.innerHTML = `
     <section class="confirmation">
       <div class="burst"><svg viewBox="0 0 92 92" aria-hidden="true"><circle class="ring" cx="46" cy="46" r="46" transform="rotate(-90 46 46)"/><path class="tick" d="M28 47.5 41 60.5 65 34"/></svg></div>
-      <h2>Thank you! Order #${esc(orderNumber)} is placed.</h2>
-      <p class="lead">${owing ? "Just one more step: send your payment and we'll take it from there." : "We've emailed your receipt and will keep you posted."}</p>
+      <h2>${payAgain ? `Order #${esc(orderNumber)} is waiting for payment.` : `Thank you! Order #${esc(orderNumber)} is placed.`}</h2>
+      <p class="lead">${payAgain ? "Your payment hasn't been confirmed yet. Continue to the secure payment page to finish." : owing ? "Just one more step: send your payment and we'll take it from there." : "We've emailed your receipt and will keep you posted."}</p>
       <div class="chips">${chip('Order', `#${orderNumber}`)}${owing ? chip('Amount', money(session.total)) : ''}</div>
-      ${owing ? `<div class="pay-box"><h3>${icon('transfer')} Complete your payment</h3><p>${esc(paymentInstructions)}</p></div>` : ''}
+      ${owing && !payAgain ? `<div class="pay-box"><h3>${icon('transfer')} Complete your payment</h3><p>${esc(paymentInstructions)}</p></div>` : ''}
+      ${payAgain ? `<a class="cta-link" href="${esc(payAgain)}">Continue to payment</a>` : ''}
       ${noticeHtml()}
       <ol class="timeline">
         <li class="ok"><span class="n">${icon('check')}</span><div><b>Order placed</b>Your order is saved${owing ? '' : ' and paid'}.</div></li>
@@ -373,5 +383,8 @@ function showConfirmation(orderNumber, successUrl, paymentInstructions) {
       setTimeout(() => { button.classList.remove('copied'); button.innerHTML = `${icon('copy')} Copy`; }, 1800);
     }));
 }
+
+// Coming back with the browser's Back button can restore the page frozen on "Redirecting…": start over from the saved state.
+window.addEventListener('pageshow', (event) => { if (event.persisted) location.reload(); });
 
 init().catch(() => showMessage({ iconName: 'x-circle', title: 'Something went wrong', text: 'Please refresh and try again.' }));

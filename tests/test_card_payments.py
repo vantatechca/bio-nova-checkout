@@ -315,7 +315,10 @@ class TestRedirectPaymentPage:
     def test_a_second_submit_does_not_ask_for_another_payment_page(self, h, redirect):
         session_id = h.create_session()["id"]
         first, second = pay(h, session_id, token=""), pay(h, session_id, token="")
-        assert first.json()["order_number"] == second.json()["order_number"] and second.json()["redirect_url"] == ""
+        # coming back from the payment page and pressing Pay again resumes the same payment page
+        assert first.json()["order_number"] == second.json()["order_number"]
+        assert second.json()["redirect_url"] == first.json()["redirect_url"] != ""
+        assert public_view(h, session_id)["payment_url"] == first.json()["redirect_url"]
         assert len([r for r in redirect.requests if r["body"].get("type") == "create_payment"]) == 1
 
 

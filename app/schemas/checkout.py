@@ -141,6 +141,7 @@ class PublicSessionOut(BaseModel):
     order_number: int | None
     payment_instructions: str | None
     payment_status: str | None
+    payment_url: str = ""  # redirect card flow, not yet paid: where the customer can go on paying
     payment_methods: list[PaymentMethodPublic] = Field(serialization_alias="paymentMethods")
     card: CardPublic | None = None
     branding: Branding

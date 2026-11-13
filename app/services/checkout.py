@@ -159,6 +159,7 @@ def public_view(config: AppConfig, session: CheckoutSession, order: Order | None
         order_number=order.number if order else None,
         payment_instructions=order.payment_instructions if order else None,
         payment_status=order.payment_status if order else None,
+        payment_url=(order.payment_url or "") if order and order.payment_status == PaymentStatus.PENDING else "",
         payment_methods=methods,
         card=card,
         branding=Branding(
@@ -190,7 +191,10 @@ def complete_session(
     if session is None:
         raise NotFound("Session not found")
     if session.status == SessionStatus.COMPLETE and session.order_id:
-        return session, orders.get(session.order_id), ""  # idempotent
+        order = orders.get(session.order_id)
+        # Back from the payment page and pressing Pay again: send them to the same payment page.
+        resume = order.payment_url if order.payment_status == PaymentStatus.PENDING else ""
+        return session, order, resume or ""  # idempotent
     if session.is_expired:
         raise Gone("This checkout session has expired")
 
@@ -231,6 +235,7 @@ def complete_session(
         payment_method_id=method.id,
         payment_method_label=method.label,
         payment_reference=payment.reference,
+        payment_url=payment.redirect_url or None,
         currency=session.currency,
         subtotal=session.subtotal,
         shipping=session.shipping,
