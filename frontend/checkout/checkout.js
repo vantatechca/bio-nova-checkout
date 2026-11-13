@@ -220,7 +220,7 @@ function wirePaymentMethods() {
 // ---------------------------------------------------------------- trust
 const trustHtml = (cls = 'trust-side') => `
   <ul class="trust ${cls}" aria-label="Checkout security">
-    <li>${icon('lock')}<div><b>Secure, encrypted checkout</b><span>Your connection to this page is protected with HTTPS.</span></div></li>
+    <li>${icon('lock')}<div><b>Safe &amp; secure payment</b><span>Your personal and payment details are kept private and protected.</span></div></li>
     <li>${icon('shield')}<div><b>Your card details stay private</b><span>Card numbers go straight to our payment partner and are never stored here.</span></div></li>
     <li>${icon('package')}<div><b>Your order number right away</b><span>You'll see your order number as soon as you place your order. Questions? Contact the store.</span></div></li>
   </ul>`;
