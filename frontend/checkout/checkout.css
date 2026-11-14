@@ -168,11 +168,17 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .line.total .num { color: var(--brand); font-size: 30px; font-weight: 900; letter-spacing: -0.02em; text-transform: none; }
 .line.total small { font-size: 12px; font-weight: 700; color: var(--text-3); margin-right: 8px; letter-spacing: 0.06em; }
 .free { color: var(--ok); font-weight: 800; }
-.promo { display: flex; align-items: center; gap: 10px; padding: 13px 24px; border-top: 1px solid var(--line); color: var(--text-2); font-size: 13.5px; line-height: 1.4; }
-.promo .icon { flex: none; width: 20px; height: 20px; color: var(--brand); }
-.promo b { color: var(--text); }
-.promo.unlocked { color: var(--ok); background: var(--ok-soft); }
-.promo.unlocked b { color: var(--ok); }
+.promo { padding: 16px 24px 18px; border-top: 1px solid var(--line); color: var(--text-2); font-size: 13.5px; }
+.promo-text { margin-bottom: 14px; line-height: 1.4; }
+.promo-text b { color: var(--text); }
+.promo-track { position: relative; height: 10px; margin-right: 14px; border-radius: 999px; background: var(--line); }
+.promo-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand), #14c8a8); transition: width 0.5s ease; }
+.promo-flag { position: absolute; right: -14px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2px solid var(--line-strong); color: var(--text-3); }
+.promo-flag .icon { width: 15px; height: 15px; }
+.promo-scale { display: flex; justify-content: space-between; margin-top: 9px; font-size: 11.5px; font-weight: 600; color: var(--text-3); }
+.promo.unlocked .promo-text, .promo.unlocked .promo-text b { color: var(--ok); }
+.promo.unlocked .promo-fill { background: var(--ok); }
+.promo.unlocked .promo-flag { background: var(--ok); border-color: var(--ok); color: #fff; }
 
 /* ---------- Loading / message cards ---------- */
 .state-card { grid-column: 1 / -1; justify-self: center; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 44px 36px; max-width: 460px; }

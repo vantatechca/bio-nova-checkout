@@ -266,13 +266,23 @@ function renderForm() {
 }
 
 /** State/province is a list for countries that have one (US, Canada, Australia), a free text box otherwise. */
-/** Free-shipping promotion banner under the total: shows what is left to spend, or that it is unlocked. */
+/** Free-shipping milestone under the total: a progress bar towards the threshold, with a flag at the end. */
 function promoHtml() {
   const left = FREE_SHIPPING_FROM - session.subtotal;
-  const text = left > 0
-    ? `Spend <b>${money(FREE_SHIPPING_FROM)}</b> to unlock <b>free shipping</b> — add <b>${money(left)}</b> more`
-    : `<b>Free shipping unlocked!</b> Your order is over ${money(FREE_SHIPPING_FROM)}`;
-  return `<div class="promo ${left > 0 ? '' : 'unlocked'}">${icon('truck')}<span>${text}</span></div>`;
+  const done = left <= 0;
+  const pct = Math.max(0, Math.min(100, Math.round((session.subtotal / FREE_SHIPPING_FROM) * 100)));
+  const text = done
+    ? '<b>You unlocked free shipping!</b>'
+    : `You're <b>${money(left)}</b> away from <b>free shipping</b>`;
+  return `
+    <div class="promo ${done ? 'unlocked' : ''}">
+      <div class="promo-text">${text}</div>
+      <div class="promo-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress to free shipping">
+        <div class="promo-fill" style="width:${pct}%"></div>
+        <span class="promo-flag">${icon(done ? 'check' : 'truck')}</span>
+      </div>
+      <div class="promo-scale"><span>${money(0)}</span><span>${money(FREE_SHIPPING_FROM)} · Free shipping</span></div>
+    </div>`;
 }
 
 function wireRegionPicker() {
