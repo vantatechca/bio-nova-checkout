@@ -84,6 +84,7 @@ export async function loadSettings() {
         <label>Store name<input data-field="storeName" value="${esc(cfg.storeName)}"></label>
         <label>Default currency<input data-field="currency" maxlength="3" value="${esc(cfg.currency)}"></label>
         <label>Default flat shipping <span class="muted">(minor units, e.g. 500 = 5.00)</span><input data-field="shippingFlat" type="number" min="0" step="1" value="${cfg.shippingFlat}"></label>
+        <label>Free shipping from <span class="muted">(minor units, e.g. 7000 = 70.00; 0 = off)</span><input data-field="freeShippingMin" type="number" min="0" step="1" value="${cfg.freeShippingMin}"></label>
         <label>Default tax rate (%)<input data-field="taxRatePercent" type="number" min="0" max="100" step="0.01" value="${cfg.taxRatePercent}"></label>
       </div>
       <label>Allowed redirect domains <span class="muted">(comma separated, blank = any — recommended: your store's domain)</span><input data-field="allowedDomains" placeholder="yourstore.com" value="${esc(cfg.allowedDomains)}"></label>
@@ -205,6 +206,7 @@ export async function loadSettings() {
         storeName: field('storeName').value,
         currency: field('currency').value,
         shippingFlat: Math.round(Number(field('shippingFlat').value) || 0),
+        freeShippingMin: Math.round(Number(field('freeShippingMin').value) || 0),
         taxRatePercent: Number(field('taxRatePercent').value) || 0,
         allowedDomains: field('allowedDomains').value,
         logoUrl: field('logoUrl').value,

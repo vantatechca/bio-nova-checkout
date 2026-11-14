@@ -68,7 +68,12 @@ def create_session(db: Session, store_record: StoreRecord, data: CreateSessionIn
 
     items = [item.model_dump() for item in data.items]
     subtotal = sum(i["unit_amount"] * i["quantity"] for i in items)
-    shipping = data.shipping_amount if data.shipping_amount is not None else store.shipping_flat
+    if data.shipping_amount is not None:
+        shipping = data.shipping_amount
+    elif store.free_shipping_min and subtotal >= store.free_shipping_min:
+        shipping = 0  # the free-shipping promotion is unlocked
+    else:
+        shipping = store.shipping_flat
     tax = data.tax_amount if data.tax_amount is not None else round(subtotal * store.tax_rate_percent / 100)
 
     session = CheckoutSession(
@@ -151,6 +156,7 @@ def public_view(config: AppConfig, session: CheckoutSession, order: Order | None
         items=session.items,
         subtotal=session.subtotal,
         shipping=session.shipping,
+        free_shipping_min=store.free_shipping_min,
         tax=session.tax,
         total=session.total,
         customer=session.customer,

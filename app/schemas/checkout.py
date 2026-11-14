@@ -133,6 +133,7 @@ class PublicSessionOut(BaseModel):
     items: list[dict]
     subtotal: int
     shipping: int
+    free_shipping_min: int = 0  # subtotal that unlocks free shipping (0 = no promotion)
     tax: int
     total: int
     customer: dict

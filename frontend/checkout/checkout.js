@@ -7,9 +7,6 @@ const app = document.querySelector('#app');
 const sessionId = new URLSearchParams(location.search).get('session');
 let session = null;
 
-// Current promotion: spending this much (in cents) unlocks free shipping. Change it here when the promotion changes.
-const FREE_SHIPPING_FROM = 7000;
-
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
@@ -268,9 +265,11 @@ function renderForm() {
 /** State/province is a list for countries that have one (US, Canada, Australia), a free text box otherwise. */
 /** Free-shipping milestone under the total: a progress bar towards the threshold, with a flag at the end. */
 function promoHtml() {
-  const left = FREE_SHIPPING_FROM - session.subtotal;
+  const threshold = session.free_shipping_min;
+  if (!threshold) return '';
+  const left = threshold - session.subtotal;
   const done = left <= 0;
-  const pct = Math.max(0, Math.min(100, Math.round((session.subtotal / FREE_SHIPPING_FROM) * 100)));
+  const pct = Math.max(0, Math.min(100, Math.round((session.subtotal / threshold) * 100)));
   const text = done
     ? '<b>You unlocked free shipping!</b>'
     : `You're <b>${money(left)}</b> away from <b>free shipping</b>`;
@@ -281,7 +280,7 @@ function promoHtml() {
         <div class="promo-fill" style="width:${pct}%"></div>
         <span class="promo-flag">${icon(done ? 'check' : 'truck')}</span>
       </div>
-      <div class="promo-scale"><span>${money(0)}</span><span>${money(FREE_SHIPPING_FROM)} · Free shipping</span></div>
+      <div class="promo-scale"><span>${money(0)}</span><span>${money(threshold)} · Free shipping</span></div>
     </div>`;
 }
 

@@ -18,6 +18,14 @@ class TestCreatingSessions:
         session = h.create_session()
         assert (session["shipping"], session["tax"], session["total"]) == (700, 650, 6350)
 
+    def test_free_shipping_unlocks_at_the_threshold(self, h):
+        h.configure(shippingFlat=750, freeShippingMin=5000)  # the cart is exactly 50.00
+        assert h.create_session()["shipping"] == 0
+        h.configure(freeShippingMin=5001)
+        session = h.create_session()
+        assert session["shipping"] == 750 and session["total"] == 5750
+        assert h.client.get(f"/api/public/sessions/{session['id']}").json()["free_shipping_min"] == 5001
+
     def test_store_supplied_shipping_and_tax_override_defaults(self, h):
         h.configure(shippingFlat=700, taxRatePercent=13)
         session = h.create_session(shipping_amount=0, tax_amount=0)

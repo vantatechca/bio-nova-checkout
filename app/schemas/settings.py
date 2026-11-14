@@ -127,6 +127,9 @@ class StoreSettings(CamelModel):
     client_api_url: Text2000 = ""  # the client's charge endpoint
     client_api_secret: str = Field(default_factory=lambda: new_secret("capi"))  # signs our requests to that endpoint
     shipping_flat: int = Field(default=0, ge=0)  # minor units; used when the store doesn't send shipping_amount
+    free_shipping_min: int = Field(
+        default=0, ge=0
+    )  # minor units; orders with a subtotal at or above this ship free (0 = never)
     tax_rate_percent: float = Field(default=0, ge=0, le=100)
     payment_methods: list[PaymentMethod] = Field(default_factory=default_payment_methods, max_length=10)
 
@@ -168,6 +171,7 @@ class StoreSettingsUpdate(CamelModel):
     card_form_url: Text2000 | None = None
     client_api_url: Text2000 | None = None
     shipping_flat: int | None = Field(default=None, ge=0)
+    free_shipping_min: int | None = Field(default=None, ge=0)
     tax_rate_percent: float | None = Field(default=None, ge=0, le=100)
     payment_methods: list[PaymentMethod] | None = Field(default=None, max_length=10)
 
