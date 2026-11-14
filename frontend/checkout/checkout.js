@@ -7,6 +7,9 @@ const app = document.querySelector('#app');
 const sessionId = new URLSearchParams(location.search).get('session');
 let session = null;
 
+// Current promotion: spending this much (in cents) unlocks free shipping. Change it here when the promotion changes.
+const FREE_SHIPPING_FROM = 7000;
+
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
@@ -126,6 +129,7 @@ function summaryHtml() {
         ${session.tax ? `<div class="line"><span>Tax</span><span class="num">${money(session.tax)}</span></div>` : ''}
         <div class="line total"><span>Total</span><span class="num"><small>${esc(session.currency)}</small>${money(session.total)}</span></div>
       </div>
+      ${promoHtml()}
     </aside>`;
 }
 
@@ -262,6 +266,15 @@ function renderForm() {
 }
 
 /** State/province is a list for countries that have one (US, Canada, Australia), a free text box otherwise. */
+/** Free-shipping promotion banner under the total: shows what is left to spend, or that it is unlocked. */
+function promoHtml() {
+  const left = FREE_SHIPPING_FROM - session.subtotal;
+  const text = left > 0
+    ? `Spend <b>${money(FREE_SHIPPING_FROM)}</b> to unlock <b>free shipping</b> — add <b>${money(left)}</b> more`
+    : `<b>Free shipping unlocked!</b> Your order is over ${money(FREE_SHIPPING_FROM)}`;
+  return `<div class="promo ${left > 0 ? '' : 'unlocked'}">${icon('truck')}<span>${text}</span></div>`;
+}
+
 function wireRegionPicker() {
   const form = document.querySelector('#checkout-form');
   const field = form.querySelector('[data-role="state-field"]');
