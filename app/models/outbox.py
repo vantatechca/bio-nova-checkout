@@ -45,6 +45,7 @@ class EmailLog(Base):
     to_addr: Mapped[str] = mapped_column(String(255))
     subject: Mapped[str] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(MediumText)
+    html: Mapped[str | None] = mapped_column(MediumText, nullable=True)  # the styled version; body stays as plain text
     status: Mapped[str] = mapped_column(String(10), default=EmailStatus.QUEUED)
     error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)

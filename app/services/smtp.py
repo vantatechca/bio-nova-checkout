@@ -16,7 +16,7 @@ class SmtpError(Exception):
     """Delivery failed; the message is safe to show in the admin."""
 
 
-def send_mail(smtp: SmtpSettings, *, to: str, subject: str, body: str) -> None:
+def send_mail(smtp: SmtpSettings, *, to: str, subject: str, body: str, html: str | None = None) -> None:
     message = EmailMessage()
     message["From"] = smtp.from_address
     message["To"] = to
@@ -24,6 +24,8 @@ def send_mail(smtp: SmtpSettings, *, to: str, subject: str, body: str) -> None:
     message["Date"] = formatdate(localtime=False)
     message["Message-ID"] = make_msgid()
     message.set_content(body)
+    if html:
+        message.add_alternative(html, subtype="html")  # clients that can't show HTML fall back to the plain text
 
     context = ssl.create_default_context()
     try:

@@ -7,11 +7,13 @@ from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import EmailLog, EmailStatus, Order, PaymentStatus
 from app.models.types import utcnow
 from app.repositories import OutboxRepository
 from app.schemas.settings import SmtpSettings
 from app.services.config import AppConfig
+from app.services.email_html import render_html
 from app.services.money import format_money
 from app.services.smtp import SmtpError, send_mail
 
@@ -77,7 +79,16 @@ def queue_email(db: Session, config: AppConfig, email_type: str, order: Order) -
     if not recipient:
         return None
     store = config.store_by_id(order.store_id)
-    subject, body = render_email(email_type, order, store.name if store else "Our store")
+    store_name = store.name if store else "Our store"
+    subject, body = render_email(email_type, order, store_name)
+    public_url = (get_settings().public_url or "").rstrip("/")
+    html = render_html(
+        email_type,
+        order,
+        store_name,
+        logo_url=store.settings.logo_url if store else "",
+        admin_url=f"{public_url}/admin" if public_url else "",
+    )
     configured = config.email.smtp.configured
     email = EmailLog(
         id=f"em_{secrets.token_hex(6)}",
@@ -86,6 +97,7 @@ def queue_email(db: Session, config: AppConfig, email_type: str, order: Order) -
         to_addr=recipient,
         subject=subject[:500],
         body=body,
+        html=html,
         status=EmailStatus.QUEUED if configured else EmailStatus.SKIPPED,
         error=None if configured else "SMTP not configured",
         next_attempt_at=utcnow() if configured else None,
@@ -105,7 +117,7 @@ def attempt_delivery(smtp: SmtpSettings, email: EmailLog, *, auto_retry: bool = 
         return
     email.attempts += 1
     try:
-        send_mail(smtp, to=email.to_addr, subject=email.subject, body=email.body)
+        send_mail(smtp, to=email.to_addr, subject=email.subject, body=email.body, html=email.html)
     except SmtpError as exc:
         email.error = str(exc)[:500]
         if auto_retry and email.attempts < MAX_ATTEMPTS:

@@ -26,9 +26,20 @@ class ReceivedMail:
     def subject(self) -> str:
         return str(self.message["Subject"])
 
+    def _part(self, content_type: str) -> str:
+        for part in self.message.walk():
+            if part.get_content_type() == content_type:
+                return part.get_payload(decode=True).decode()
+        return ""
+
     @property
     def body(self) -> str:
-        return self.message.get_payload(decode=True).decode()
+        """The plain-text part (emails are sent as text plus HTML)."""
+        return self._part("text/plain")
+
+    @property
+    def html(self) -> str:
+        return self._part("text/html")
 
 
 class FakeSmtpServer:

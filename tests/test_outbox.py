@@ -20,6 +20,7 @@ class TestEmails:
         assert mail.recipients == ["ada@example.com"] and mail.sender == "orders@shop.test"
         assert mail.subject == "Order #1001 received - My Store"
         assert "by bank transfer" in mail.body and "Order #1001" in mail.body and "$50.00" in mail.body
+        assert "Order received" in mail.html and "$50.00" in mail.html  # the styled version travels along
 
     def test_paid_shipped_and_cancelled_emails(self, h, smtp_server):
         h.configure_smtp(smtp_server)
