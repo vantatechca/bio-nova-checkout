@@ -174,8 +174,6 @@ def list_for_display(db: Session, panel: str) -> dict:
                 "tier": s.tier,
                 "status": "live" if live else "coming_soon",
                 "content": row.payload if live else None,
-                "has_pending": bool(live and row.pending_payload is not None),
-                "updated_at": row.updated_at if live else None,
             }
         )
     return {"panel": panel, "title": definition.title, "sections": sections}

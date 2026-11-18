@@ -1,4 +1,4 @@
-// Ads Data and Sites tabs: cards filled by an automated feed (see docs/content-panels.md).
+// Ads Data and Sites tabs: cards filled by an automated feed (see docs/bionova-bot-connection-guide.md).
 // The content is the same for every checkout, so nothing here depends on which one is selected.
 import { icon } from '/static/shared/icons.js';
 import { api } from '../api.js';
@@ -78,16 +78,15 @@ function content(c) {
 // ---------------------------------------------------------------- cards and page
 const TIERS = { included: 'Included', addon: 'Add-on' };
 
-function head(s, extra = '') {
+function head(s) {
   const tier = s.tier ? `<span class="pc-tier ${esc(s.tier)}">${esc(TIERS[s.tier] ?? s.tier)}</span>` : '';
   return `<div class="pcard-head"><span class="chip-ico">${icon(s.icon)}</span>
-    <div class="pcard-title"><h2>${esc(s.title)}</h2><p class="sub">${esc(s.subtitle)}</p></div>${tier}${extra}</div>`;
+    <div class="pcard-title"><h2>${esc(s.title)}</h2><p class="sub">${esc(s.subtitle)}</p></div>${tier}</div>`;
 }
 
 const liveCard = (s) => `<article class="card pcard live">
-  ${head(s, s.has_pending ? '<span class="badge b-pending" title="Newer content is waiting to be published">Update waiting</span>' : '')}
-  ${content(s.content)}
-  ${s.updated_at ? `<p class="pc-foot">Updated ${esc(formatDate(s.updated_at))}</p>` : ''}</article>`;
+  ${head(s)}
+  ${content(s.content)}</article>`;
 
 const soonCard = (s) => `<article class="card pcard soon">${head(s)}
   <div class="pc-soon"><span class="badge b-pending">Coming soon</span></div></article>`;

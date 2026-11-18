@@ -183,8 +183,6 @@ class DisplaySection(BaseModel):
     tier: str | None
     status: str  # live | coming_soon
     content: dict | None
-    has_pending: bool
-    updated_at: datetime | None
 
 
 class DisplayPanel(BaseModel):

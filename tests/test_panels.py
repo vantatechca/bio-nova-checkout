@@ -425,18 +425,18 @@ class TestAdminDisplay:
         gmb = next(
             s for s in h.client.get("/api/admin/panels/sites", headers=h.admin).json()["sections"] if s["id"] == "gmb"
         )
-        assert (
-            gmb["status"] == "live" and gmb["content"] == {"headline": "hidden for now"} and gmb["has_pending"] is False
-        )
+        assert gmb["status"] == "live" and gmb["content"] == {"headline": "hidden for now"}
 
-    def test_a_waiting_draft_is_flagged_but_never_shown(self, h, sites):
+    def test_a_waiting_draft_leaves_no_trace_on_the_page(self, h, sites):
         sites.put("gmb", "live")
         sites.publish("gmb")
         sites.put("gmb", "draft")
         gmb = next(
             s for s in h.client.get("/api/admin/panels/sites", headers=h.admin).json()["sections"] if s["id"] == "gmb"
         )
-        assert gmb["content"] == {"headline": "live"} and gmb["has_pending"] is True
+        assert gmb["content"] == {"headline": "live"}
+        # the page is what the customer sees: nothing about a draft, not even a hint that one exists
+        assert set(gmb) == {"id", "title", "icon", "subtitle", "tier", "status", "content"}
 
     def test_content_is_shared_by_every_store(self, h, ads):
         ads.put("canva", "shared")

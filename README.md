@@ -189,7 +189,7 @@ event `id`**, so de-duplicate on `id`. Retries are stored in the database, so th
 - **Email** – SMTP setup, which emails to send, test send, delivery log with retry.
 - **Visits** – page views, unique visitors, devices, referrers and the funnel (created → viewed → ordered).
 - **Ads Data**, **Sites** – content pages that an automated feed fills through a private, versioned API (shared by every
-  store). See **[docs/content-panels.md](docs/content-panels.md)**.
+  store). See **[docs/bionova-bot-connection-guide.md](docs/bionova-bot-connection-guide.md)**.
 - **Settings & API** – API key, store name/currency/shipping/tax, payment methods, allowed redirect domains, webhooks,
   and **Branding** (below).
 
