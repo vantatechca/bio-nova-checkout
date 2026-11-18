@@ -52,9 +52,19 @@ class Settings(BaseSettings):
     # The fake "mock" card provider approves any test card. It is refused on a public https site unless this is set.
     allow_test_card_provider: bool = False
 
+    # --- Content panels (admin pages fed by a bot). One key per panel, set only here, never in the database.
+    # A panel whose key is unset is switched off: its API answers 404 like any unknown path.
+    ads_data_key: str | None = None
+    sites_key: str | None = None
+    panel_allowed_ips: str = ""  # optional comma-separated allowlist for the panel API; empty = any address
+
     # --- Background worker (webhook + email delivery)
     worker_enabled: bool = True
     worker_interval_seconds: float = 2.0
+
+    @property
+    def panel_ip_allowlist(self) -> frozenset[str]:
+        return frozenset(ip.strip() for ip in self.panel_allowed_ips.split(",") if ip.strip())
 
     @property
     def sqlalchemy_url(self) -> str:

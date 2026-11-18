@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.types import utcnow
 from app.repositories import OutboxRepository, SessionRepository, VisitRepository
+from app.services import panels
 
 log = logging.getLogger(__name__)
 
@@ -23,5 +24,6 @@ def purge_old_data(db: Session) -> None:
     removed = SessionRepository(db).purge_abandoned(now - timedelta(days=ABANDONED_SESSION_DAYS))
     VisitRepository(db).purge(now - timedelta(days=VISIT_RETENTION_DAYS))
     OutboxRepository(db).purge(now - timedelta(days=EMAIL_RETENTION_DAYS), now - timedelta(days=WEBHOOK_RETENTION_DAYS))
+    panels.purge_expired(db, now)
     if removed:
         log.info("Purged %d abandoned checkout sessions", removed)

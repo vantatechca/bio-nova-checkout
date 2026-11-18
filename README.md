@@ -188,6 +188,8 @@ event `id`**, so de-duplicate on `id`. Retries are stored in the database, so th
 - **Revenue** – today / 7d / 30d / all-time, daily chart, average order, outstanding and refunded totals, by payment method.
 - **Email** – SMTP setup, which emails to send, test send, delivery log with retry.
 - **Visits** – page views, unique visitors, devices, referrers and the funnel (created → viewed → ordered).
+- **Ads Data**, **Sites** – content pages that an automated feed fills through a private, versioned API (shared by every
+  store). See **[docs/content-panels.md](docs/content-panels.md)**.
 - **Settings & API** – API key, store name/currency/shipping/tax, payment methods, allowed redirect domains, webhooks,
   and **Branding** (below).
 

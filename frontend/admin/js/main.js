@@ -4,19 +4,30 @@ import { state } from './state.js';
 import { $, $$, applyBrand, hydrateIcons } from './util.js';
 import { loadEmail } from './views/email.js';
 import { ORDER_TABS, initOrdersView, loadOrders } from './views/orders.js';
+import { loadPanel } from './views/panels.js';
 import { loadRevenue } from './views/revenue.js';
 import { loadSettings } from './views/settings.js';
 import { bindStoreHooks, loadStores } from './views/stores.js';
 import { loadVisits } from './views/visits.js';
 
-const VIEWS = ['orders', 'revenue', 'email', 'visits', 'stores', 'settings'];
-const LOADERS = { revenue: loadRevenue, email: loadEmail, visits: loadVisits, stores: loadStores, settings: loadSettings };
+const VIEWS = ['orders', 'revenue', 'email', 'visits', 'ads', 'sites', 'stores', 'settings'];
+const LOADERS = {
+  revenue: loadRevenue,
+  email: loadEmail,
+  visits: loadVisits,
+  ads: () => loadPanel('ads'),
+  sites: () => loadPanel('sites'),
+  stores: loadStores,
+  settings: loadSettings,
+};
 const TITLES = {
   pending: ['Pending orders', 'Awaiting payment. Orders stay here until their payment is confirmed.'],
   paid: ['Paid orders', 'Orders with payment received.'],
   failed: ['Failed & cancelled', 'Cancelled orders, failed payments and refunds.'],
   revenue: ['Revenue', 'Money in, by day and by payment method.'],
   visits: ['Visits', 'How customers move through your checkout.'],
+  ads: ['Ads Data', 'Ad spend and performance, kept up to date for you.'],
+  sites: ['Sites', 'Your live sites and their profiles, kept up to date for you.'],
   email: ['Email', 'Customer notifications and the delivery log.'],
   stores: ['Stores', 'Every storefront connected to this checkout.'],
   settings: ['Settings & API', 'Connect your store and configure checkout.'],

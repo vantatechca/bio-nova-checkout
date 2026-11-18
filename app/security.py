@@ -100,5 +100,7 @@ class SlidingWindowLimiter:
 
 
 login_limiter = LoginRateLimiter()
+# Content-panel API: per panel and client address, whatever the outcome of authentication.
+panel_limiter = SlidingWindowLimiter(max_events=300, window_seconds=60)
 # The Shopify cart endpoint is public (called from the storefront's browser), so it is throttled per client.
 shopify_limiter = SlidingWindowLimiter(max_events=20, window_seconds=60)

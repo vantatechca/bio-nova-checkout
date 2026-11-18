@@ -21,7 +21,7 @@ def test_admin_modules_are_served_as_javascript(client):
     response = client.get("/static/admin/js/main.js")
     assert response.status_code == 200 and "javascript" in response.headers["content-type"]
     # every relative import inside the admin modules resolves to a real file
-    for module in ["main", "api", "views/orders", "views/settings", "views/email"]:
+    for module in ["main", "api", "views/orders", "views/settings", "views/email", "views/panels"]:
         source = client.get(f"/static/admin/js/{module}.js").text
         base = module.rsplit("/", 1)[0] + "/" if "/" in module else ""
         for target in re.findall(r"from '(\./[^']+|\.\./[^']+)'", source):

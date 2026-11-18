@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 from app.database import ensure_database_exists, get_engine, session_scope  # noqa: E402
-from app.security import login_limiter, shopify_limiter  # noqa: E402
+from app.security import login_limiter, panel_limiter, shopify_limiter  # noqa: E402
 from app.services.config import config_service, ensure_defaults  # noqa: E402
 from tests.helpers import Harness  # noqa: E402
 from tests.support import FakeClientPaymentApi, FakeShopify, FakeSmtpServer, WebhookReceiver  # noqa: E402
@@ -37,6 +37,9 @@ TABLES_TO_CLEAR = (
     "visits",
     "email_log",
     "webhook_deliveries",
+    "panel_items",
+    "panel_versions",
+    "panel_log",
     "settings",
     "stores",
 )
@@ -70,6 +73,7 @@ def clean_state(client: TestClient) -> None:
     config_service.invalidate()
     login_limiter._failures.clear()
     shopify_limiter.clear()
+    panel_limiter.clear()
 
 
 @pytest.fixture

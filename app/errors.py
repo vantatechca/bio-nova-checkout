@@ -21,6 +21,10 @@ class NotFound(AppError):
     status_code = 404
 
 
+class Unprocessable(AppError):
+    status_code = 422
+
+
 class Gone(AppError):
     status_code = 410
 

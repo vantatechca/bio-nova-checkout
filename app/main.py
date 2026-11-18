@@ -8,10 +8,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
 from app.api import api_router
@@ -77,6 +79,13 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse({"error": exc.message}, status_code=exc.status_code)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        # A wrong method on a content-panel route must not say "405, this path exists": it is the same 404.
+        if exc.status_code == 405 and request.url.path.startswith("/api/panels/"):
+            exc = StarletteHTTPException(status_code=404, detail="Not Found")
+        return await http_exception_handler(request, exc)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
