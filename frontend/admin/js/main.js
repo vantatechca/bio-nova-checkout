@@ -27,7 +27,7 @@ const TITLES = {
   revenue: ['Revenue', 'Money in, by day and by payment method.'],
   visits: ['Visits', 'How customers move through your checkout.'],
   ads: ['Ads Data', 'Ad spend and performance, kept up to date for you.'],
-  sites: ['Sites', 'Your live sites and their profiles, kept up to date for you.'],
+  sites: ['All available sites', 'Your live sites and their profiles, kept up to date for you.'],
   email: ['Email', 'Customer notifications and the delivery log.'],
   stores: ['Stores', 'Every storefront connected to this checkout.'],
   settings: ['Settings & API', 'Connect your store and configure checkout.'],

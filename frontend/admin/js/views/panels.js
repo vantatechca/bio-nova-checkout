@@ -99,6 +99,7 @@ export async function loadPanel(slug) {
   const nothingLive = panel.sections.every((s) => s.status !== 'live');
   root.innerHTML = nothingLive
     ? `<div class="card"><div class="empty"><div class="empty-art">${icon('clock')}</div><b>Coming soon</b>
-        <p class="muted">${esc(panel.title)} will appear here as soon as it is ready.</p></div></div>`
+        <ul class="soon-list">${panel.sections.map((s) => `<li><span class="chip-ico">${icon(s.icon)}</span>
+          <span>${esc(s.title)}</span>${s.tier ? `<span class="pc-tier ${esc(s.tier)}">${esc(TIERS[s.tier] ?? s.tier)}</span>` : ''}</li>`).join('')}</ul></div></div>`
     : `<div class="pgrid">${panel.sections.map((s) => (s.status === 'live' ? liveCard(s) : soonCard(s))).join('')}</div>`;
 }
