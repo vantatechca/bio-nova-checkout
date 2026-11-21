@@ -52,8 +52,8 @@ export async function loadVisits() {
       <div class="card"><h2>Referrers</h2><p class="sub">Where they came from</p>${meterList(v.referrers, sum(v.referrers))}</div>
     </div>
     <div class="card">
-      <h2>Look up by IP</h2><p class="sub">Find visits from an address or prefix (e.g. 203.0.113.0)</p>
-      <div class="row"><input data-role="ip-input" placeholder="203.0.113.7" style="max-width:260px"><button class="small" data-role="ip-search">Search</button></div>
+      <h2>Look up by IP</h2><p class="sub">Matches the start of the stored address — in the default truncated mode that's a /24, e.g. 203.0.113 (not 203.0.113.7)</p>
+      <div class="row"><input data-role="ip-input" placeholder="203.0.113" style="max-width:260px"><button class="small" data-role="ip-search">Search</button></div>
       <div class="table-wrap" style="margin-top:12px"><table>
         <thead><tr><th>Time</th><th>IP</th><th>Country</th><th>City</th><th>Device</th><th>Referrer</th></tr></thead>
         <tbody id="ip-results"></tbody>
