@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from sqlalchemy import ColumnElement, delete, select, true, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.models import CheckoutSession, SessionStatus
-from app.models.types import utcnow
 
 
 class SessionRepository:
@@ -31,18 +30,6 @@ class SessionRepository:
             .where(CheckoutSession.id == session_id, CheckoutSession.viewed_at.is_(None))
             .values(viewed_at=when)
         )
-
-    def abandoned(self, since_hours: int, store_id: int | None = None, limit: int = 200) -> list[CheckoutSession]:
-        """Open sessions older than ``since_hours``, newest first: carts that were never finished."""
-        scope: ColumnElement[bool] = CheckoutSession.store_id == store_id if store_id is not None else true()
-        cutoff = utcnow() - timedelta(hours=since_hours)
-        stmt = (
-            select(CheckoutSession)
-            .where(CheckoutSession.status == SessionStatus.OPEN, CheckoutSession.created_at < cutoff, scope)
-            .order_by(CheckoutSession.created_at.desc())
-            .limit(limit)
-        )
-        return list(self.db.scalars(stmt))
 
     def purge_abandoned(self, expired_before: datetime) -> int:
         """Deletes sessions that never turned into an order. Completed sessions are kept."""

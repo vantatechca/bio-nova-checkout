@@ -10,18 +10,12 @@ from app.models.types import UTCDateTime, utcnow
 
 
 class Visit(Base):
-    """A checkout page view.
-
-    ``visitor`` is always a salted hash (of either a first-party cookie or IP + user agent), never the IP. ``ip``
-    is the IP itself, kept subject to ``VISIT_IP_MODE`` (truncated by default, off, or in full) -- see
-    ``app.services.visits.stored_ip``.
-    """
+    """A checkout page view. Only a salted hash of IP + user agent is stored, never the IP."""
 
     __tablename__ = "visits"
     __table_args__ = (
         Index("ix_visits_at", "at"),
         Index("ix_visits_dedupe", "session_id", "visitor", "at"),
-        Index("ix_visits_ip", "ip"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -31,8 +25,3 @@ class Visit(Base):
     visitor: Mapped[str] = mapped_column(String(12))
     device: Mapped[str] = mapped_column(String(10))
     referrer: Mapped[str] = mapped_column(String(100), default="")
-    ip: Mapped[str] = mapped_column(String(45), default="")
-    country: Mapped[str] = mapped_column(String(2), default="")
-    city: Mapped[str] = mapped_column(String(100), default="")
-    asn: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    isp: Mapped[str] = mapped_column(String(200), default="")

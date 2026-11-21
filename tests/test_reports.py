@@ -73,7 +73,6 @@ class TestVisits:
         h.client.get(
             f"/api/public/sessions/{viewed_and_ordered}", params={"ref": "https://shop.test/cart"}, headers=PHONE
         )
-        h.client.cookies.clear()  # a different visitor: without this they'd share the first one's bvid cookie
         h.client.get(f"/api/public/sessions/{viewed_only}", headers=BROWSER)
         h.complete(viewed_and_ordered, "bank")
         v = h.client.get("/api/admin/visits", headers=h.admin, params={"days": 7}).json()

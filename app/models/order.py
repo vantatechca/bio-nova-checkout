@@ -37,8 +37,6 @@ class Order(Base):
         Index("ix_orders_external_ref", "external_ref"),
         Index("ix_orders_paid_at", "paid_at"),
         Index("ix_orders_created_at", "created_at"),
-        Index("ix_orders_utm_campaign", "utm_campaign"),
-        Index("ix_orders_ip", "order_ip"),
         {"mysql_auto_increment": "1001"},
     )
 
@@ -75,16 +73,6 @@ class Order(Base):
 
     tracking_number: Mapped[str] = mapped_column(String(200), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
-    utm_source: Mapped[str] = mapped_column(String(100), default="")
-    utm_medium: Mapped[str] = mapped_column(String(100), default="")
-    utm_campaign: Mapped[str] = mapped_column(String(200), default="")
-    utm_content: Mapped[str] = mapped_column(String(200), default="")
-    utm_term: Mapped[str] = mapped_column(String(200), default="")
-    click_provider: Mapped[str] = mapped_column(String(20), default="")
-    click_id: Mapped[str] = mapped_column(String(200), default="")
-    order_ip: Mapped[str] = mapped_column(String(45), default="")  # subject to VISIT_IP_MODE, like visits.ip
-    order_country: Mapped[str] = mapped_column(String(2), default="")
-    risk_flags: Mapped[dict] = mapped_column(JSON, default=dict)  # informational only -- never blocks an order
     meta: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
 
     paid_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)

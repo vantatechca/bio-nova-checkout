@@ -1,28 +1,12 @@
 // Pending / Paid / Failed tabs: order tables, "mark paid" flow and the order details drawer.
 import { icon } from '/static/shared/icons.js';
-import { api, downloadFile } from '../api.js';
+import { api } from '../api.js';
 import { bindStoreFilter } from '../components.js';
 import { refreshCounts } from '../counts.js';
 import { state } from '../state.js';
 import { $, $$, ORDER_STATUSES, PAYMENT_STATUSES, avatar, badge, esc, flash, formatDate, hydrateIcons, money } from '../util.js';
 
 export const ORDER_TABS = ['pending', 'paid', 'failed'];
-
-const RISK_LABELS = {
-  country_mismatch: 'IP country ≠ shipping',
-  datacenter: 'Datacenter IP',
-  velocity: '3+ orders/24h',
-};
-const TIMELINE_ICONS = { session: 'package', visit: 'eye', step: 'check', payment: 'card', order: 'receipt', email: 'mail' };
-
-/** Risk flags are informational only (see app.services.risk) -- shown as warning badges, never blocking anything. */
-function riskBadgesHtml(flags) {
-  const names = Object.keys(flags ?? {});
-  if (!names.length) return '';
-  return `<div class="row" style="margin-top:6px">${names
-    .map((name) => `<span class="badge" style="background:var(--warn-soft);color:var(--warn)" title="${esc(flags[name])}">${esc(RISK_LABELS[name] ?? name)}</span>`)
-    .join('')}</div>`;
-}
 
 let orders = [];
 const view = () => $('#view-orders');
@@ -37,13 +21,6 @@ export function initOrdersView() {
   });
   $('#status-filter').addEventListener('change', loadOrders);
   $('#refresh').addEventListener('click', loadOrders);
-  $('#export-orders').addEventListener('click', async () => {
-    try {
-      await downloadFile('/orders/export', 'orders.csv');
-    } catch (err) {
-      flash(null, false, err.message);
-    }
-  });
 
   $('#overlay').addEventListener('click', (e) => { if (e.target === $('#overlay')) closeDrawer(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
@@ -146,9 +123,6 @@ function openOrder(id) {
     });
   }
 
-  const timelineButton = $('[data-role=timeline]', d);
-  if (timelineButton) timelineButton.addEventListener('click', () => loadFullTimeline(d, order.session_id));
-
   $('[data-role=save]', d).addEventListener('click', async () => {
     try {
       await api(`/orders/${id}`, {
@@ -197,18 +171,6 @@ function drawerHtml(o) {
         <div class="block"><h3>Ship to</h3><div class="address">${esc(a.line1)}${a.line2 ? `<br>${esc(a.line2)}` : ''}<br>${esc(a.city)}${a.state ? `, ${esc(a.state)}` : ''} ${esc(a.postal_code)}<br>${esc(a.country)}</div></div>
       </div>
 
-      ${(o.order_ip || o.order_country || Object.keys(o.risk_flags).length) ? `
-      <div class="block"><h3>Origin</h3><p class="muted" style="font-size:13px">
-        ${o.order_country ? `Country: <b>${esc(o.order_country)}</b>` : ''}${o.order_ip ? ` · IP ${esc(o.order_ip)}` : ''}
-      </p>${riskBadgesHtml(o.risk_flags)}</div>` : ''}
-
-      ${(o.utm_campaign || o.utm_source || o.click_id) ? `
-      <div class="block"><h3>Attribution</h3><p class="muted" style="font-size:13px">
-        ${o.utm_campaign ? `Campaign: <b>${esc(o.utm_campaign)}</b><br>` : ''}
-        ${o.utm_source || o.utm_medium ? `Source / medium: ${esc(o.utm_source)}${o.utm_source && o.utm_medium ? ' / ' : ''}${esc(o.utm_medium)}<br>` : ''}
-        ${o.click_id ? `Ad click: ${esc(o.click_provider)}:${esc(o.click_id)}` : ''}
-      </p></div>` : ''}
-
       <div class="block"><h3>Items</h3>
         ${o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.sku ? ` <small>(${esc(i.sku)})</small>` : ''} <small>× ${i.quantity}</small></span><span class="num">${money(i.unit_amount * i.quantity, o.currency)}</span></div>`).join('')}
         <div class="line"><span class="muted">Shipping</span><span class="num">${money(o.shipping, o.currency)}</span></div>
@@ -228,26 +190,8 @@ function drawerHtml(o) {
         <div class="row" style="margin-top:14px"><button class="primary" data-role="save">Save changes</button><span class="msg" data-role="save-msg"></span></div>
       </div>
 
-      <div class="block">
-        <div class="row between"><h3>History</h3><button class="small" data-role="timeline">${icon('clock')} Full timeline</button></div>
-        <ol class="timeline" data-role="history">${o.history.slice().reverse().map((h) => `<li><b>${esc(h.text)}</b><small>${esc(formatDate(h.at))}</small></li>`).join('')}</ol>
+      <div class="block"><h3>History</h3>
+        <ol class="timeline">${o.history.slice().reverse().map((h) => `<li><b>${esc(h.text)}</b><small>${esc(formatDate(h.at))}</small></li>`).join('')}</ol>
       </div>
     </div>`;
-}
-
-/** Replaces the order-only History list with the full cross-source timeline (visits, steps, attempts, emails too). */
-async function loadFullTimeline(drawerEl, sessionId) {
-  const list = $('[data-role=history]', drawerEl);
-  list.innerHTML = '<li>Loading…</li>';
-  try {
-    const items = await api(`/sessions/${sessionId}/timeline`);
-    list.innerHTML = items
-      .slice()
-      .reverse()
-      .map((it) => `<li>${icon(TIMELINE_ICONS[it.kind] ?? 'package')} <b>${esc(it.text)}</b><small>${esc(formatDate(it.at))}</small></li>`)
-      .join('');
-    hydrateIcons(drawerEl);
-  } catch (err) {
-    flash(null, false, err.message);
-  }
 }

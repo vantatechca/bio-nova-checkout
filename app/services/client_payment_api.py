@@ -100,10 +100,7 @@ def charge(store: StoreSettings, payload: dict, *, idempotency_key: str) -> Char
     if status == "succeeded" and body.get("id"):
         return ChargeResult(reference=str(body["id"])[:200])
     if status == "declined":
-        message = str(body.get("message") or DECLINED)[:200]
-        exc = BadRequest(message)
-        exc.reason = str(body.get("code") or message)[:200]  # the processor's decline code, when it gives one
-        raise exc
+        raise BadRequest(str(body.get("message") or DECLINED)[:200])
     log.warning("Client payment API returned an unsupported result: %r", status)  # e.g. 3-D Secure "requires_action"
     raise BadGateway(UNAVAILABLE)
 

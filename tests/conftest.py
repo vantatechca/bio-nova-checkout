@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 from app.database import ensure_database_exists, get_engine, session_scope  # noqa: E402
-from app.security import checkout_limiter, complete_limiter, login_limiter, panel_limiter, shopify_limiter  # noqa: E402
+from app.security import login_limiter, panel_limiter, shopify_limiter  # noqa: E402
 from app.services.config import config_service, ensure_defaults  # noqa: E402
 from tests.helpers import Harness  # noqa: E402
 from tests.support import FakeClientPaymentApi, FakeShopify, FakeSmtpServer, WebhookReceiver  # noqa: E402
@@ -35,8 +35,6 @@ TABLES_TO_CLEAR = (
     "orders",
     "checkout_sessions",
     "visits",
-    "checkout_events",
-    "payment_attempts",
     "email_log",
     "webhook_deliveries",
     "panel_items",
@@ -76,9 +74,6 @@ def clean_state(client: TestClient) -> None:
     login_limiter._failures.clear()
     shopify_limiter.clear()
     panel_limiter.clear()
-    checkout_limiter.clear()
-    complete_limiter.clear()
-    client.cookies.clear()  # the bvid visitor cookie must not leak between tests (or "visitors") sharing this client
 
 
 @pytest.fixture

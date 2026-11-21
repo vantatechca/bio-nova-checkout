@@ -18,9 +18,6 @@ class ShopifyCartIn(BaseModel):
     items: list[CartLine] = Field(min_length=1, max_length=50)
     shop: Text200 = ""  # the shop's myshopify domain (``Shopify.shop``); identifies the store when the Origin cannot
     cart_token: Text200 = ""  # Shopify's cart token (``/cart.js`` -> ``token``); kept as a reference on the order
-    # Raw utm_*/click-id params from the page the shopper checked out from (see app.services.attribution);
-    # normalised server-side so the click-id -> network mapping has a single source of truth.
-    attribution: dict[str, str] = Field(default_factory=dict)
 
 
 class ShopifyCheckoutOut(BaseModel):

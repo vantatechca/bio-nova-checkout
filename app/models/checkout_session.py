@@ -22,7 +22,6 @@ class CheckoutSession(Base):
     __table_args__ = (
         Index("ix_checkout_sessions_created_at", "created_at"),
         Index("ix_checkout_sessions_status_expires_at", "status", "expires_at"),
-        Index("ix_checkout_sessions_utm_campaign", "utm_campaign"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -40,13 +39,6 @@ class CheckoutSession(Base):
     success_url: Mapped[str] = mapped_column(Text)
     cancel_url: Mapped[str] = mapped_column(Text, default="")
     external_ref: Mapped[str] = mapped_column(String(200), default="")
-    utm_source: Mapped[str] = mapped_column(String(100), default="")
-    utm_medium: Mapped[str] = mapped_column(String(100), default="")
-    utm_campaign: Mapped[str] = mapped_column(String(200), default="")
-    utm_content: Mapped[str] = mapped_column(String(200), default="")
-    utm_term: Mapped[str] = mapped_column(String(200), default="")
-    click_provider: Mapped[str] = mapped_column(String(20), default="")
-    click_id: Mapped[str] = mapped_column(String(200), default="")
     meta: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     order_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     viewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)

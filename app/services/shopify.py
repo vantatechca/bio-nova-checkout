@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.errors import BadGateway, BadRequest
 from app.models import CheckoutSession
-from app.schemas.checkout import AttributionIn, CreateSessionIn, LineItemIn
+from app.schemas.checkout import CreateSessionIn, LineItemIn
 from app.schemas.shopify import CartLine
 from app.services import checkout
 from app.services.config import AppConfig, StoreRecord
@@ -138,11 +138,7 @@ def resolve_store(config: AppConfig, origin: str = "", shop: str = "") -> StoreR
 
 
 def create_checkout_from_cart(
-    db: Session,
-    record: StoreRecord,
-    lines: list[CartLine],
-    cart_token: str = "",
-    attribution: AttributionIn | None = None,
+    db: Session, record: StoreRecord, lines: list[CartLine], cart_token: str = ""
 ) -> CheckoutSession:
     store = record.settings
     if not (store.shopify_domain and store.shopify_storefront_token):
@@ -187,7 +183,6 @@ def create_checkout_from_cart(
             success_url=storefront,
             cancel_url=f"{storefront}/cart",
             external_ref=f"shopify:{cart_token}"[:200] if cart_token else "shopify",
-            attribution=attribution or AttributionIn(),
             metadata={"source": "shopify"},
         ),
     )

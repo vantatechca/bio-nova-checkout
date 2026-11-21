@@ -49,16 +49,6 @@ class OrderOut(BaseModel):
     shipping_address: dict
     tracking_number: str
     notes: str
-    utm_source: str
-    utm_medium: str
-    utm_campaign: str
-    utm_content: str
-    utm_term: str
-    click_provider: str
-    click_id: str
-    order_ip: str
-    order_country: str
-    risk_flags: dict
     metadata: dict = Field(validation_alias="meta")
     paid_at: datetime | None
     history: list[OrderEventOut]

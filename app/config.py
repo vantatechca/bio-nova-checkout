@@ -62,27 +62,9 @@ class Settings(BaseSettings):
     worker_enabled: bool = True
     worker_interval_seconds: float = 2.0
 
-    # --- Visitor IP / geolocation / fraud signals (see docs on visit analytics)
-    # off: nothing is stored. truncated (default): IPv4 to /24, IPv6 to /48. full: the complete address -- only
-    # turn this on once you've considered the data-protection implications; the visitor hash always uses the
-    # full IP regardless of this setting, so unique-visitor counts aren't affected by it.
-    visit_ip_mode: str = "truncated"
-    geoip_city_db: str = ""  # path to a GeoLite2-City.mmdb; empty disables country/city lookups
-    geoip_asn_db: str = ""  # path to a GeoLite2-ASN.mmdb; empty disables ASN/ISP lookups and the datacenter flag
-    risk_datacenter_asns: str = ""  # comma-separated ASN numbers (e.g. "AS14061,AS16509") flagged as datacenter/VPN
-    checkout_rate_limit: int = 30  # order placements allowed per IP per minute
-
     @property
     def panel_ip_allowlist(self) -> frozenset[str]:
         return frozenset(ip.strip() for ip in self.panel_allowed_ips.split(",") if ip.strip())
-
-    @property
-    def ip_mode(self) -> str:
-        return self.visit_ip_mode if self.visit_ip_mode in ("off", "truncated", "full") else "truncated"
-
-    @property
-    def risk_asn_set(self) -> frozenset[str]:
-        return frozenset(asn.strip() for asn in self.risk_datacenter_asns.split(",") if asn.strip())
 
     @property
     def sqlalchemy_url(self) -> str:

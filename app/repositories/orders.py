@@ -187,9 +187,3 @@ class OrderRepository:
 
     def count_other_currency(self, currency: str) -> int:
         return int(self.db.scalar(select(func.count()).where(Order.currency != currency, _scope(self.store_id))) or 0)
-
-    def count_since(self, ip: str, since: datetime) -> int:
-        """Orders placed from ``ip`` (as stored, i.e. subject to ``VISIT_IP_MODE``) since ``since``."""
-        if not ip:
-            return 0
-        return int(self.db.scalar(select(func.count()).where(Order.order_ip == ip, Order.created_at >= since)) or 0)

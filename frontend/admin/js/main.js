@@ -2,9 +2,6 @@
 import { api, isSignedIn, login, logout, setUnauthorizedHandler } from './api.js';
 import { state } from './state.js';
 import { $, $$, applyBrand, hydrateIcons } from './util.js';
-import { loadAbandoned } from './views/abandoned.js';
-import { loadAttempts } from './views/attempts.js';
-import { loadAttribution } from './views/attribution.js';
 import { loadEmail } from './views/email.js';
 import { ORDER_TABS, initOrdersView, loadOrders } from './views/orders.js';
 import { loadPanel } from './views/panels.js';
@@ -13,16 +10,11 @@ import { loadSettings } from './views/settings.js';
 import { bindStoreHooks, loadStores } from './views/stores.js';
 import { loadVisits } from './views/visits.js';
 
-const VIEWS = [
-  'orders', 'revenue', 'email', 'visits', 'attribution', 'attempts', 'abandoned', 'ads', 'sites', 'stores', 'settings',
-];
+const VIEWS = ['orders', 'revenue', 'email', 'visits', 'ads', 'sites', 'stores', 'settings'];
 const LOADERS = {
   revenue: loadRevenue,
   email: loadEmail,
   visits: loadVisits,
-  attribution: loadAttribution,
-  attempts: loadAttempts,
-  abandoned: loadAbandoned,
   ads: () => loadPanel('ads'),
   sites: () => loadPanel('sites'),
   stores: loadStores,
@@ -34,9 +26,6 @@ const TITLES = {
   failed: ['Failed & cancelled', 'Cancelled orders, failed payments and refunds.'],
   revenue: ['Revenue', 'Money in, by day and by payment method.'],
   visits: ['Visits', 'How customers move through your checkout.'],
-  attribution: ['Attribution', 'Which campaigns and ad clicks bring customers to checkout.'],
-  attempts: ['Payment attempts', 'Declines, errors and recoveries, by reason.'],
-  abandoned: ['Abandoned checkouts', 'Carts that were opened but never finished.'],
   ads: ['Ads Data', 'Ad spend and performance, kept up to date for you.'],
   sites: ['All available sites', 'Your live sites and their profiles, kept up to date for you.'],
   email: ['Email', 'Customer notifications and the delivery log.'],
