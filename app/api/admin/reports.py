@@ -38,5 +38,6 @@ def attempts(db: DbSession, store: StoreScope, days: int = 30):
 
 
 @router.get("/visits/lookup", response_model=list[VisitRow])
-def visits_lookup(db: DbSession, store: StoreScope, ip: str = Query(min_length=1, max_length=45), days: int = 30):
+def visits_lookup(db: DbSession, store: StoreScope, ip: str = Query(default="", max_length=45), days: int = 30):
+    """``ip`` filters by prefix; left empty, this is just the most recent visits."""
     return reports.visits_by_ip(db, ip, days, store)

@@ -52,8 +52,8 @@ export async function loadVisits() {
       <div class="card"><h2>Referrers</h2><p class="sub">Where they came from</p>${meterList(v.referrers, sum(v.referrers))}</div>
     </div>
     <div class="card">
-      <h2>Look up by IP</h2><p class="sub">Matches the start of the stored address — in the default truncated mode that's a /24, e.g. 203.0.113 (not 203.0.113.7)</p>
-      <div class="row"><input data-role="ip-input" placeholder="203.0.113" style="max-width:260px"><button class="small" data-role="ip-search">Search</button></div>
+      <h2>Recent visits</h2><p class="sub">The most recent visits (up to 50); optionally filter by the start of the stored address — in the default truncated mode that's a /24, e.g. 203.0.113, not a full host IP like 203.0.113.7</p>
+      <div class="row"><input data-role="ip-input" placeholder="Filter by IP prefix (optional)" style="max-width:260px"><button class="small" data-role="ip-search">Search</button></div>
       <div class="table-wrap" style="margin-top:12px"><table>
         <thead><tr><th>Time</th><th>IP</th><th>Country</th><th>City</th><th>Device</th><th>Referrer</th></tr></thead>
         <tbody id="ip-results"></tbody>
@@ -69,17 +69,17 @@ export async function loadVisits() {
   });
   $('[data-role=ip-search]', root).addEventListener('click', () => lookupByIp(root));
   $('[data-role=ip-input]', root).addEventListener('keydown', (e) => { if (e.key === 'Enter') lookupByIp(root); });
+  lookupByIp(root); // shows the most recent visits straight away, with no filter needed
 }
 
 async function lookupByIp(root) {
   const ip = $('[data-role=ip-input]', root).value.trim();
-  if (!ip) return;
   try {
     const rows = await api(`/visits/lookup?ip=${encodeURIComponent(ip)}&days=${state.rangeDays}`);
     $('#ip-results').innerHTML = rows.length
       ? rows.map((r) => `
           <tr><td>${esc(formatDate(r.at))}</td><td>${esc(r.ip)}</td><td>${esc(r.country || '—')}</td><td>${esc(r.city || '—')}</td><td>${esc(r.device)}</td><td>${esc(r.referrer || '—')}</td></tr>`).join('')
-      : '<tr><td colspan="6" class="empty-inline">No matching visits.</td></tr>';
+      : `<tr><td colspan="6" class="empty-inline">${ip ? 'No matching visits.' : 'No visits in this period.'}</td></tr>`;
   } catch (err) {
     flash(null, false, err.message);
   }
