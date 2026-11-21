@@ -9,6 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
 
 from app.schemas.common import Text20, Text40, Text100, Text200, Text300, Text500, Text2000
 
+# Ad-click id query params we recognise, mapped to the network that issued them. Checked in this order;
+# the first one present in a query string wins (a URL should never carry more than one anyway).
+CLICK_PROVIDERS = {
+    "gclid": "google",
+    "wbraid": "google",
+    "gbraid": "google",
+    "ttclid": "tiktok",
+    "fbclid": "meta",
+}
+
 
 # ---------------------------------------------------------------- inputs
 class LineItemIn(BaseModel):
@@ -40,6 +50,18 @@ class AddressIn(BaseModel):
     country: Text100 = ""
 
 
+class AttributionIn(BaseModel):
+    """Where the customer's visit came from. Empty fields are simply not known for that touchpoint."""
+
+    utm_source: Text100 = ""
+    utm_medium: Text100 = ""
+    utm_campaign: Text200 = ""
+    utm_content: Text200 = ""
+    utm_term: Text200 = ""
+    click_id: Text200 = ""
+    click_provider: Text20 = ""
+
+
 class CreateSessionIn(BaseModel):
     items: list[LineItemIn] = Field(min_length=1, max_length=100)
     currency: str | None = None
@@ -49,6 +71,7 @@ class CreateSessionIn(BaseModel):
     success_url: Text2000
     cancel_url: Text2000 = ""
     external_ref: Text200 = ""  # your store's own cart / order id, echoed back in webhooks
+    attribution: AttributionIn = Field(default_factory=AttributionIn)
     metadata: dict = Field(default_factory=dict)
 
     @field_validator("metadata")
@@ -86,6 +109,13 @@ class SessionOut(BaseModel):
     success_url: str
     cancel_url: str
     external_ref: str
+    utm_source: str
+    utm_medium: str
+    utm_campaign: str
+    utm_content: str
+    utm_term: str
+    click_provider: str
+    click_id: str
     metadata: dict = Field(validation_alias="meta")
     order_id: str | None
     viewed_at: datetime | None

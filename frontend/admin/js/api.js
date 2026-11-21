@@ -16,7 +16,7 @@ export function setToken(value) {
 }
 
 // Endpoints whose data is per store. Reads may span all stores; settings-style calls always need one store.
-const FILTERED = ['/orders', '/stats', '/revenue', '/visits'];
+const FILTERED = ['/orders', '/stats', '/revenue', '/visits', '/attribution', '/attempts', '/sessions'];
 const PER_STORE = ['/settings', '/card', '/shopify', '/test-session'];
 
 function scoped(path) {
@@ -43,6 +43,26 @@ export async function api(path, { method = 'GET', body } = {}) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
+}
+
+/** Downloads a file from `/api/admin<path>` (e.g. a CSV export) using the same auth as `api()`. */
+export async function downloadFile(path, filename) {
+  const response = await fetch(`/api/admin${scoped(path)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401) {
+    onUnauthorized();
+    throw new Error('Session expired');
+  }
+  if (!response.ok) throw new Error('Request failed');
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export async function login(password) {

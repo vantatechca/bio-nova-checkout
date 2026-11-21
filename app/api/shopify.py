@@ -9,7 +9,7 @@ from app.api.deps import Config, DbSession, base_url
 from app.errors import AppError
 from app.schemas.shopify import ShopifyCartIn
 from app.security import client_ip, shopify_limiter
-from app.services import checkout, shopify
+from app.services import attribution, checkout, shopify
 from app.services.config import StoreRecord
 
 router = APIRouter(prefix="/api/shopify", tags=["shopify"])
@@ -47,7 +47,8 @@ def checkout_from_cart(data: ShopifyCartIn, request: Request, db: DbSession, con
     try:
         shopify_limiter.hit(client_ip(request))
         store = shopify.resolve_store(config, request.headers.get("origin", ""), data.shop)
-        session = shopify.create_checkout_from_cart(db, store, data.items, data.cart_token)
+        attr = attribution.from_query_params(data.attribution)
+        session = shopify.create_checkout_from_cart(db, store, data.items, data.cart_token, attr)
     except AppError as exc:  # answered here (not re-raised) so the error carries the CORS headers the browser needs
         return JSONResponse(
             {"error": exc.message}, status_code=exc.status_code, headers=_cors_headers(request, store, config)

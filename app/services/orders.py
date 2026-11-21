@@ -5,9 +5,9 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.errors import NotFound
-from app.models import Order, OrderStatus, PaymentStatus
+from app.models import Order, OrderStatus, PaymentAttempt, PaymentStatus
 from app.models.types import utcnow
-from app.repositories import OrderRepository
+from app.repositories import OrderRepository, PaymentAttemptRepository
 from app.schemas.orders import OrderUpdateIn
 from app.services import notifications
 from app.services.config import AppConfig
@@ -41,6 +41,8 @@ def apply_update(order: Order, data: OrderUpdateIn) -> OrderChange:
             if order.status == OrderStatus.PENDING and data.status is None:
                 order.status = OrderStatus.PROCESSING
                 changes.append(f"Status: {OrderStatus.PENDING} → {OrderStatus.PROCESSING}")
+        elif data.payment_status == PaymentStatus.FAILED:
+            change.became_failed = True
         order.payment_status = data.payment_status
 
     if data.payment_reference is not None and data.payment_reference != order.payment_reference:
@@ -70,5 +72,16 @@ def update_order(db: Session, config: AppConfig, key: str, data: OrderUpdateIn, 
     if order is None:
         raise NotFound("Order not found")
     change = apply_update(order, data)
+    if change.became_failed:
+        attempts = PaymentAttemptRepository(db)
+        attempts.add(
+            PaymentAttempt(
+                store_id=order.store_id,
+                session_id=order.session_id,
+                outcome="declined",
+                method_id=order.payment_method_id,
+                attempt_no=attempts.count_for(order.session_id) + 1,
+            )
+        )
     notifications.order_updated(db, config, order, change, notify_customer=data.notify)
     return order

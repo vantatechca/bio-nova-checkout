@@ -24,10 +24,11 @@ from app.schemas.checkout import (
     SessionOut,
 )
 from app.schemas.settings import StoreSettings
-from app.services import notifications
+from app.services import attribution, geoip, notifications, risk
 from app.services.config import AppConfig, StoreRecord
 from app.services.money import format_money
 from app.services.payments import PaymentRequest, card_available, process_payment
+from app.services.visits import stored_ip
 
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
@@ -95,6 +96,7 @@ def create_session(db: Session, store_record: StoreRecord, data: CreateSessionIn
         meta=data.metadata,
         expires_at=utcnow() + timedelta(hours=get_settings().session_ttl_hours),
     )
+    attribution.apply(session, data.attribution)
     SessionRepository(db).add(session)
     return session
 
@@ -183,11 +185,17 @@ REDIRECT_PENDING = (
 
 
 def complete_session(
-    db: Session, config: AppConfig, session_id: str, data: CompleteSessionIn, base_url: str = ""
-) -> tuple[CheckoutSession, Order, str]:
-    """Places the order for a session. Returns ``(session, order, redirect_url)``.
+    db: Session,
+    config: AppConfig,
+    session_id: str,
+    data: CompleteSessionIn,
+    base_url: str = "",
+    customer_ip: str = "",
+) -> tuple[CheckoutSession, Order, str, bool]:
+    """Places the order for a session. Returns ``(session, order, redirect_url, created)``.
 
     ``redirect_url`` is only set when the customer must go on to the client's payment page (redirect card flow).
+    ``created`` is ``False`` for an idempotent replay (double-click, retry), when no new charge was attempted.
 
     The session row is locked for the duration of the transaction, so double-clicks and
     retries can never create two orders: later callers just receive the existing one.
@@ -200,7 +208,7 @@ def complete_session(
         order = orders.get(session.order_id)
         # Back from the payment page and pressing Pay again: send them to the same payment page.
         resume = order.payment_url if order.payment_status == PaymentStatus.PENDING else ""
-        return session, order, resume or ""  # idempotent
+        return session, order, resume or "", False  # idempotent
     if session.is_expired:
         raise Gone("This checkout session has expired")
 
@@ -231,6 +239,7 @@ def complete_session(
     )
     payment_status = payment.status
     now = utcnow()
+    ip_mode = get_settings().ip_mode
     order = Order(
         store_id=session.store_id,
         public_id=f"ord_{secrets.token_hex(8)}",
@@ -256,6 +265,16 @@ def complete_session(
         ship_state=address.state,
         ship_postal_code=address.postal_code,
         ship_country=address.country,
+        utm_source=session.utm_source,
+        utm_medium=session.utm_medium,
+        utm_campaign=session.utm_campaign,
+        utm_content=session.utm_content,
+        utm_term=session.utm_term,
+        click_provider=session.click_provider,
+        click_id=session.click_id,
+        order_ip=stored_ip(customer_ip, ip_mode),
+        order_country=geoip.lookup(customer_ip).country,
+        risk_flags=risk.evaluate(get_settings(), customer_ip, address, db),
         meta=session.meta,
         paid_at=now if payment_status == PaymentStatus.PAID else None,
         created_at=now,
@@ -293,4 +312,4 @@ def complete_session(
     )
     session.status, session.order_id = SessionStatus.COMPLETE, order.public_id
     notifications.order_created(db, config, order)
-    return session, order, payment.redirect_url
+    return session, order, payment.redirect_url, True
