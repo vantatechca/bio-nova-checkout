@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     visit_ip_mode: str = "truncated"
     geoip_city_db: str = ""  # path to a GeoLite2-City.mmdb; empty disables country/city lookups
     geoip_asn_db: str = ""  # path to a GeoLite2-ASN.mmdb; empty disables ASN/ISP lookups and the datacenter flag
+    # If set (and geoip_city_db/geoip_asn_db are left blank), the app downloads both GeoLite2 databases itself at
+    # startup -- see app.services.geoip_setup. A free account/key: https://www.maxmind.com/en/geolite2/signup
+    maxmind_license_key: str = ""
     risk_datacenter_asns: str = ""  # comma-separated ASN numbers (e.g. "AS14061,AS16509") flagged as datacenter/VPN
     checkout_rate_limit: int = 30  # order placements allowed per IP per minute
 

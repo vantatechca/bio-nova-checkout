@@ -27,6 +27,7 @@ from app.database import (
 from app.errors import AppError
 from app.migrate import upgrade_to_head
 from app.services.config import config_service, ensure_defaults
+from app.services.geoip_setup import ensure_geoip_databases
 from app.workers.outbox import OutboxWorker
 
 log = logging.getLogger("app")
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+    ensure_geoip_databases()
     ensure_database_exists()
     wait_for_database()
     if settings.auto_migrate:
