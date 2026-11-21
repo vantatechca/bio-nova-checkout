@@ -7,6 +7,16 @@ const app = document.querySelector('#app');
 const sessionId = new URLSearchParams(location.search).get('session');
 let session = null;
 
+// ---------------------------------------------------------------- checkout-funnel step beacons
+const stepsFired = new Set();
+function fireStep(name) {
+  if (stepsFired.has(name)) return; // at most once per page load; the server also dedupes
+  stepsFired.add(name);
+  const url = `/api/public/sessions/${encodeURIComponent(sessionId)}/steps?step=${encodeURIComponent(name)}`;
+  if (navigator.sendBeacon) navigator.sendBeacon(url);
+  else fetch(url, { method: 'POST', keepalive: true }).catch(() => {});
+}
+
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
@@ -72,7 +82,10 @@ async function init() {
   if (!sessionId) {
     return showMessage({ iconName: 'link', title: 'No checkout session', text: 'This link is missing its session. Please return to the store and try again.' });
   }
-  const response = await fetch(`/api/public/sessions/${encodeURIComponent(sessionId)}?ref=${encodeURIComponent(document.referrer || '')}`);
+  const params = new URLSearchParams(location.search);
+  params.delete('session');
+  params.set('ref', document.referrer || '');
+  const response = await fetch(`/api/public/sessions/${encodeURIComponent(sessionId)}?${params}`);
   if (!response.ok) {
     return showMessage({ iconName: 'x-circle', title: 'Checkout not found', text: 'This checkout link is invalid. Please return to the store.' });
   }
@@ -191,11 +204,15 @@ function wirePaymentMethods() {
   cardHandle = null;
   document.querySelectorAll('input[name=payment]').forEach((radio) =>
     radio.addEventListener('change', () => {
+      fireStep('method_chosen');
       syncCardFields();
       const button = document.querySelector('#submit');
       if (button && !button.disabled) button.textContent = ctaLabel();
     }));
   syncCardFields();
+  const cardFields = document.querySelector('[data-card-fields]');
+  // The provider's own fields may live in a cross-origin iframe, so this is a best-effort proxy for "first keystroke".
+  if (cardFields) cardFields.addEventListener('focusin', () => fireStep('card_entered'), { once: true });
 }
 
 // ---------------------------------------------------------------- trust
@@ -257,7 +274,21 @@ function renderForm() {
       ${trustHtml('trust-below')}
     </form>
     <div class="summary-col">${summaryHtml()}${trustHtml()}</div>`;
-  document.querySelector('#checkout-form').addEventListener('submit', submitOrder);
+  const form = document.querySelector('#checkout-form');
+  const ADDRESS_FIELDS = ['line1', 'city', 'postal_code', 'country', 'state'];
+  form.addEventListener('submit', submitOrder);
+  form.addEventListener('focusin', () => fireStep('form_started'), { once: true });
+  // Delegated on the form (not the fields themselves): wireRegionPicker() replaces the state field's node
+  // whenever the country changes, which would silently drop a listener attached directly to it.
+  form.addEventListener('focusout', (e) => {
+    const name = e.target.name;
+    if (name === 'email') {
+      if (form.elements.email.checkValidity() && form.elements.email.value.trim()) fireStep('contact_done');
+    } else if (ADDRESS_FIELDS.includes(name)) {
+      const required = form.elements.state.tagName === 'SELECT' ? ADDRESS_FIELDS : ADDRESS_FIELDS.filter((f) => f !== 'state');
+      if (required.every((field) => form.elements[field].value.trim())) fireStep('address_done');
+    }
+  });
   wirePaymentMethods();
   wireRegionPicker();
 }
@@ -301,6 +332,7 @@ function wireRegionPicker() {
 
 async function submitOrder(event) {
   event.preventDefault();
+  fireStep('pay_clicked');
   const form = event.target;
   const value = (name) => form.elements[name].value.trim();
   const button = document.querySelector('#submit');

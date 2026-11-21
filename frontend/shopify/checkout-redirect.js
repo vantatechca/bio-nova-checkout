@@ -26,6 +26,26 @@
   var endpoint = new URL('/api/shopify/checkout', script.src).href;
   var busy = false;
 
+  // Ad attribution, if the shopper arrived on this page via an ad link (persists for the rest of the visit).
+  var ATTRIBUTION_FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'ttclid', 'fbclid', 'wbraid', 'gbraid'];
+  var attribution = {};
+  (function captureAttribution() {
+    var params = new URLSearchParams(location.search);
+    var found = false;
+    ATTRIBUTION_FIELDS.forEach(function (key) {
+      var value = params.get(key);
+      if (value) { attribution[key] = value; found = true; }
+    });
+    if (found) {
+      try { sessionStorage.setItem('checkout-attribution', JSON.stringify(attribution)); } catch { /* storage unavailable */ }
+    } else {
+      try {
+        var stored = sessionStorage.getItem('checkout-attribution');
+        if (stored) attribution = JSON.parse(stored);
+      } catch { /* storage unavailable or nothing stored */ }
+    }
+  })();
+
   // Shopify's accelerated checkout buttons go straight to Shopify's checkout, so hide them.
   if (!script.hasAttribute('data-keep-dynamic-buttons')) {
     var style = document.createElement('style');
@@ -75,7 +95,8 @@
       body: JSON.stringify({
         cart_token: cartToken,
         shop: (window.Shopify && window.Shopify.shop) || '', // tells the checkout which of its stores this is
-        items: items
+        items: items,
+        attribution: attribution
       })
     }).then(function (r) {
       return r.json().then(function (body) { return { ok: r.ok, body: body }; });

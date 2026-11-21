@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import ColumnElement, case, delete, func, literal_column, select, true
 from sqlalchemy.orm import Session
 
-from app.models import CheckoutSession, SessionStatus, Visit
+from app.models import STEPS, CheckoutEvent, CheckoutSession, SessionStatus, Visit
 
 
 @dataclass
@@ -76,6 +76,28 @@ class VisitRepository:
             select(label, n).where(Visit.at >= since, self._visits).group_by(label).order_by(n.desc()).limit(limit)
         ).all()
         return [(name, int(c)) for name, c in rows]
+
+    def by_ip_prefix(self, prefix: str, since: datetime, limit: int = 50) -> list[Visit]:
+        """Individual visits whose stored IP starts with ``prefix`` (uses ``ix_visits_ip``)."""
+        like = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        stmt = (
+            select(Visit)
+            .where(Visit.ip.like(like), Visit.at >= since, self._visits)
+            .order_by(Visit.at.desc())
+            .limit(limit)
+        )
+        return list(self.db.scalars(stmt))
+
+    def steps(self, since: datetime) -> list[tuple[str, int]]:
+        """Distinct sessions reaching each checkout-form milestone, in the order a customer normally reaches them."""
+        scope = CheckoutEvent.store_id == self.store_id if self.store_id is not None else true()
+        n = func.count(CheckoutEvent.id)  # (session_id, step) is unique, so this already counts distinct sessions
+        counts = dict(
+            self.db.execute(
+                select(CheckoutEvent.step, n).where(CheckoutEvent.at >= since, scope).group_by(CheckoutEvent.step)
+            ).all()
+        )
+        return [(step, int(counts.get(step, 0))) for step in STEPS]
 
     def funnel(self, since: datetime) -> FunnelCounts:
         s = CheckoutSession

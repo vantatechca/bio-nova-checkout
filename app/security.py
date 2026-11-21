@@ -11,6 +11,7 @@ from collections import deque
 from fastapi import Request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
+from app.config import get_settings
 from app.errors import TooManyRequests
 
 
@@ -104,3 +105,7 @@ login_limiter = LoginRateLimiter()
 panel_limiter = SlidingWindowLimiter(max_events=300, window_seconds=60)
 # The Shopify cart endpoint is public (called from the storefront's browser), so it is throttled per client.
 shopify_limiter = SlidingWindowLimiter(max_events=20, window_seconds=60)
+# Checkout-step beacons, fired as the customer fills in the form: generous, but bounded per client.
+checkout_limiter = SlidingWindowLimiter(max_events=60, window_seconds=60)
+# Order placements: throttled per IP (CHECKOUT_RATE_LIMIT/minute), to blunt card-testing style abuse.
+complete_limiter = SlidingWindowLimiter(max_events=get_settings().checkout_rate_limit, window_seconds=60)

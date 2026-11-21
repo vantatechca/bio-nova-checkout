@@ -20,6 +20,7 @@ class OrderChange:
     became_paid: bool = False
     became_shipped: bool = False
     became_cancelled: bool = False
+    became_failed: bool = False
 
 
 def order_created(db: Session, config: AppConfig, order: Order) -> None:
