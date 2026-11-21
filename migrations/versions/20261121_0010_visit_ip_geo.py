@@ -24,7 +24,12 @@ def upgrade() -> None:
 
     op.add_column("orders", sa.Column("order_ip", sa.String(length=45), nullable=False, server_default=""))
     op.add_column("orders", sa.Column("order_country", sa.String(length=2), nullable=False, server_default=""))
-    op.add_column("orders", sa.Column("risk_flags", sa.JSON(), nullable=False, server_default="{}"))
+    # JSON/TEXT/BLOB columns couldn't take a DDL-level DEFAULT before MySQL 8.0.13, and TiDB's support for that
+    # specific feature isn't guaranteed either -- so this adds it nullable, backfills, then tightens it, which
+    # works the same way on every MySQL-wire-compatible database regardless of that feature's availability.
+    op.add_column("orders", sa.Column("risk_flags", sa.JSON(), nullable=True))
+    op.execute("UPDATE orders SET risk_flags = '{}' WHERE risk_flags IS NULL")
+    op.alter_column("orders", "risk_flags", existing_type=sa.JSON(), nullable=False)
     op.create_index("ix_orders_ip", "orders", ["order_ip"])
 
 
