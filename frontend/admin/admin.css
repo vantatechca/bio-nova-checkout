@@ -286,10 +286,40 @@ ol.steps .secret { margin-top: 8px; }
 .scope.shared { background: #e6f4ea; color: #0f7a3d; }
 
 /* ---------- Content panels (Ads Data, Sites) ----------
-   Styled as its own fixed dark "branded dashboard" (matching the reference ops dashboard these
-   feeds are modelled on), independent of the admin's own light/dark theme toggle: these variables
-   are scoped to the two panel views only, so nothing outside them is affected. */
-#view-ads, #view-sites {
+   In dark mode only, these get the fixed navy "branded dashboard" look matching the reference ops
+   dashboard these feeds are modelled on (bionova-city-ads-dashboard.vercel.app). In light mode they
+   stay ordinary light admin cards like every other tab -- the same light/dark split the rest of this
+   stylesheet already uses (see the top of the file), just scoped to these two views. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #view-ads,
+  :root:not([data-theme="light"]) #view-sites {
+    --surface: #111c35;
+    --surface-2: #15213f;
+    --sunken: #0e1730;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --text: #f2f5fb;
+    --text-2: #c3cee6;
+    --text-3: #8294bd;
+    --brand: #4c7cf7;
+    --brand-soft: rgba(76, 124, 247, 0.16);
+    --warn: #f2a93b;
+    --warn-soft: rgba(242, 169, 59, 0.14);
+    --ok: #34d399;
+    --ok-soft: rgba(52, 211, 153, 0.14);
+    --danger: #f05252;
+    --danger-soft: rgba(240, 82, 82, 0.14);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+    --r-xl: 16px;
+    background: #0a0f20;
+    color: var(--text);
+    border-radius: 18px;
+    padding: 22px;
+  }
+}
+:root[data-theme="dark"] #view-ads,
+:root[data-theme="dark"] #view-sites {
   --surface: #111c35;
   --surface-2: #15213f;
   --sunken: #0e1730;
