@@ -121,6 +121,11 @@ class TestPlacingOrders:
         assert (order["status"], order["payment_status"], order["paid_at"]) == ("pending", "pending", None)
         assert order["items"][0]["name"] == "Shirt" and order["shipping_address"]["city"] == "Toronto"
 
+    def test_the_compare_at_price_survives_onto_the_placed_order(self, h):
+        items = [{"name": "Cap", "unit_amount": 2000, "compare_at_amount": 4000, "quantity": 1}]
+        order = h.place_order("bank", items=items)
+        assert order["items"][0]["unit_amount"] == 2000 and order["items"][0]["compare_at_amount"] == 4000
+
     def test_test_gateway_marks_order_paid_immediately(self, h):
         order = h.place_order("test")
         assert (order["status"], order["payment_status"]) == ("processing", "paid") and order["paid_at"]

@@ -210,9 +210,13 @@ function drawerHtml(o) {
       </p></div>` : ''}
 
       <div class="block"><h3>Items</h3>
-        ${o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.sku ? ` <small>(${esc(i.sku)})</small>` : ''} <small>× ${i.quantity}</small></span><span class="num">${money(i.unit_amount * i.quantity, o.currency)}</span></div>`).join('')}
+        ${o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.sku ? ` <small>(${esc(i.sku)})</small>` : ''} <small>× ${i.quantity}</small></span><span class="num">${i.compare_at_amount > i.unit_amount ? `<small class="msrp">${money(i.compare_at_amount * i.quantity, o.currency)}</small> ` : ''}${money(i.unit_amount * i.quantity, o.currency)}</span></div>`).join('')}
         <div class="line"><span class="muted">Shipping</span><span class="num">${money(o.shipping, o.currency)}</span></div>
         <div class="line"><span class="muted">Tax</span><span class="num">${money(o.tax, o.currency)}</span></div>
+        ${(() => {
+          const savings = o.items.reduce((sum, i) => sum + Math.max(0, i.compare_at_amount - i.unit_amount) * i.quantity, 0);
+          return savings > 0 ? `<div class="line"><span class="muted">Saved off MSRP</span><span class="num" style="color:var(--ok)">−${money(savings, o.currency)}</span></div>` : '';
+        })()}
         <div class="line sum"><span>Total</span><span class="num">${money(o.total, o.currency)}</span></div>
         <p class="muted" style="margin-top:10px;font-size:13px">Payment: ${esc(o.payment_method.label)}${o.paid_at ? ` · paid ${esc(formatDate(o.paid_at))}` : ''}${o.payment_reference ? ` · ref ${esc(o.payment_reference)}` : ''}</p>
       </div>

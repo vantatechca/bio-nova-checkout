@@ -16,6 +16,7 @@ class OrderItemOut(BaseModel):
     description: str
     image: str
     unit_amount: int
+    compare_at_amount: int
     quantity: int
 
 

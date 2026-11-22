@@ -137,6 +137,7 @@ class OrderItem(Base):
     description: Mapped[str] = mapped_column(String(300), default="")
     image: Mapped[str] = mapped_column(Text, default="")
     unit_amount: Mapped[int] = mapped_column(BigInteger)
+    compare_at_amount: Mapped[int] = mapped_column(BigInteger, default=0)
     quantity: Mapped[int] = mapped_column(Integer)
 
     order: Mapped[Order] = relationship(back_populates="items")
