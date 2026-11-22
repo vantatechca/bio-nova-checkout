@@ -113,6 +113,9 @@ class StoreSettings(CamelModel):
     store_name: Text100 = "My Store"
     currency: str = "USD"
     api_key: str = Field(default_factory=lambda: new_secret("sk"))
+    # Read-only: a bot or analytics tool can use this (see app.api.analytics) to read reports -- attribution,
+    # payment attempts, visits, revenue, abandoned sessions -- without the full access an admin login grants.
+    analytics_key: str = Field(default_factory=lambda: new_secret("ak"))
     webhook_url: Text2000 = ""
     webhook_secret: str = Field(default_factory=lambda: new_secret("whsec"))
     allowed_domains: Text1000 = ""  # comma separated hostnames allowed in success/cancel URLs; blank = any

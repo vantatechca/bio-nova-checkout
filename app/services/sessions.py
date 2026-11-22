@@ -60,9 +60,9 @@ class TimelineItem:
     text: str
 
 
-def session_timeline(db: Session, session_id: str) -> list[TimelineItem]:
+def session_timeline(db: Session, session_id: str, store_id: int | None = None) -> list[TimelineItem]:
     session = SessionRepository(db).get(session_id)
-    if session is None:
+    if session is None or (store_id is not None and session.store_id != store_id):
         raise NotFound("Session not found")
 
     items = [TimelineItem(at=session.created_at, kind="session", text="Checkout session created")]

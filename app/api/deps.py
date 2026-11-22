@@ -55,6 +55,23 @@ def authenticated_store(request: Request, config: Config) -> ApiCaller:
 ApiStore = Annotated[ApiCaller, Depends(authenticated_store)]
 
 
+def authenticated_analytics(request: Request, config: Config) -> ApiCaller:
+    """Read-only reporting calls authenticate with the separate analytics key (never the full API key, and
+    never an admin login) -- see app.api.analytics. Same shape as ``authenticated_store``: ``X-Checkout-Store``
+    picks the store, otherwise every store's data is in scope."""
+    key = bearer_token(request) or request.headers.get("x-api-key", "")
+    if not key or not config.analytics_key_matches(key):
+        raise Unauthorized("Invalid or missing analytics key")
+    ref = request.headers.get("x-checkout-store", "").strip()
+    store = config.store_by_ref(ref) if ref else config.default_store
+    if store is None:
+        raise BadRequest("Unknown store in X-Checkout-Store")
+    return ApiCaller(store=store, scope=store.id if ref else None)
+
+
+AnalyticsCaller = Annotated[ApiCaller, Depends(authenticated_analytics)]
+
+
 def require_admin(request: Request, config: Config) -> None:
     max_age = get_settings().admin_token_ttl_hours * 3600
     if not AdminTokens.verify(config.secret, bearer_token(request), max_age):

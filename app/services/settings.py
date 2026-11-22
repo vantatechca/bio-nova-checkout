@@ -47,6 +47,12 @@ def rotate_webhook_secret(db: Session, record: StoreRecord) -> str:
     return store.webhook_secret
 
 
+def rotate_analytics_key(db: Session, record: StoreRecord) -> str:
+    store = record.settings.model_copy(update={"analytics_key": new_secret("ak")})
+    stores.save_settings(db, record.id, store)
+    return store.analytics_key
+
+
 def update_email(db: Session, config: AppConfig, update: EmailSettingsUpdate) -> EmailSettings:
     email = config.email.model_copy(deep=True)
     if update.admin_email is not None:

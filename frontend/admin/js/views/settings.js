@@ -33,6 +33,14 @@ export async function loadSettings() {
       <p class="muted" style="font-size:13.5px;margin-top:10px">The response contains <code>checkout_url</code>, the page the customer is sent to. Amounts are in minor units (cents).</p>
     </div>
 
+    <div class="card"><h2>Analytics (read-only) <span class="scope shared">Shared by all stores</span></h2><p class="sub">For a bot or analytics tool that only needs to read reports — attribution, payment attempts, visits, revenue, abandoned sessions. It cannot change anything, unlike an admin login.</p>
+      <label>Analytics key</label>
+      <div class="secret"><div class="mono" data-role="analytics-key">${MASK}</div><button data-role="show-analytics-key">Show</button><button class="danger" data-role="rotate-analytics-key">Rotate</button></div>
+      <pre class="mono">curl ${esc(base)}/api/v1/analytics/attribution \\
+  -H "Authorization: Bearer YOUR_ANALYTICS_KEY" ${storeHeader}</pre>
+      <p class="muted" style="font-size:13.5px;margin-top:10px">Same routes as this admin's own reports: <code>/stats</code>, <code>/revenue</code>, <code>/visits</code>, <code>/visits/lookup</code>, <code>/attribution</code>, <code>/attempts</code>, <code>/abandoned</code>, <code>/sessions/&lt;id&gt;/timeline</code>.</p>
+    </div>
+
     <div class="card"><h2>Branding <span class="scope own">This store only</span></h2><p class="sub">Make the customer checkout page match your storefront.</p>
       <div class="grid2">
         <label>Logo image URL <span class="muted">(https://… .png / .svg)</span><input data-field="logoUrl" placeholder="https://yourstore.com/logo.png" value="${esc(cfg.logoUrl)}"></label>
@@ -125,8 +133,10 @@ export async function loadSettings() {
     });
   };
   const keyBox = $('[data-role=api-key]', root), secretBox = $('[data-role=webhook-secret]', root);
+  const analyticsKeyBox = $('[data-role=analytics-key]', root);
   secretReveal($('[data-role=show-key]', root), keyBox, () => cfg.apiKey);
   secretReveal($('[data-role=show-secret]', root), secretBox, () => cfg.webhookSecret);
+  secretReveal($('[data-role=show-analytics-key]', root), analyticsKeyBox, () => cfg.analyticsKey);
 
   const rotate = (button, confirmText, path, prop, box, toggle) => {
     button.addEventListener('click', async () => {
@@ -140,6 +150,7 @@ export async function loadSettings() {
   };
   rotate($('[data-role=rotate-key]', root), 'Rotate the API key? Your store will stop working until you update it.', '/settings/rotate-key', 'apiKey', keyBox, '[data-role=show-key]');
   rotate($('[data-role=rotate-secret]', root), 'Rotate the webhook secret? Update your receiver afterward.', '/settings/rotate-webhook-secret', 'webhookSecret', secretBox, '[data-role=show-secret]');
+  rotate($('[data-role=rotate-analytics-key]', root), 'Rotate the analytics key? Whoever uses it (e.g. your bot) will need the new value.', '/settings/rotate-analytics-key', 'analyticsKey', analyticsKeyBox, '[data-role=show-analytics-key]');
 
   // ---- test checkout
   $('[data-role=test-checkout]', root).addEventListener('click', async () => {

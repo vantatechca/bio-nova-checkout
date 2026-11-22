@@ -65,6 +65,34 @@ class TestStoreAuth:
         assert h.client.get("/api/v1/orders", headers={"Authorization": f"Bearer {new_key}"}).status_code == 200
 
 
+class TestAnalyticsAuth:
+    def analytics_key(self, h) -> str:
+        return h.client.get("/api/admin/settings", headers=h.admin).json()["analyticsKey"]
+
+    def test_requires_the_analytics_key(self, h):
+        assert h.client.get("/api/v1/analytics/stats").status_code == 401
+        key = self.analytics_key(h)
+        assert h.client.get("/api/v1/analytics/stats", headers={"Authorization": f"Bearer {key}"}).status_code == 200
+        assert h.client.get("/api/v1/analytics/stats", headers={"X-API-Key": key}).status_code == 200
+        assert h.client.get("/api/v1/analytics/stats", headers={"Authorization": f"Bearer {key}x"}).status_code == 401
+
+    def test_the_store_api_key_does_not_work_as_the_analytics_key(self, h):
+        assert h.client.get("/api/v1/analytics/stats", headers=h.store).status_code == 401
+
+    def test_the_analytics_key_does_not_open_the_store_api_or_the_admin(self, h):
+        key = self.analytics_key(h)
+        headers = {"Authorization": f"Bearer {key}"}
+        assert h.client.get("/api/v1/orders", headers=headers).status_code == 401
+        assert h.client.get("/api/admin/orders", headers=headers).status_code == 401
+
+    def test_rotating_the_analytics_key_invalidates_the_old_one(self, h):
+        old = self.analytics_key(h)
+        new = h.client.post("/api/admin/settings/rotate-analytics-key", headers=h.admin).json()["analyticsKey"]
+        assert new.startswith("ak_") and new != old
+        assert h.client.get("/api/v1/analytics/stats", headers={"Authorization": f"Bearer {old}"}).status_code == 401
+        assert h.client.get("/api/v1/analytics/stats", headers={"Authorization": f"Bearer {new}"}).status_code == 200
+
+
 class TestSettings:
     def test_update_persists_and_validates(self, h):
         assert (

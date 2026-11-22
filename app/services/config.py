@@ -91,6 +91,10 @@ class AppConfig:
         """The API key is shared by all stores. Constant-time comparison."""
         return hmac.compare_digest(self.default_store.settings.api_key.encode(), key.encode())
 
+    def analytics_key_matches(self, key: str) -> bool:
+        """The read-only analytics key, shared by all stores like the API key. Constant-time comparison."""
+        return hmac.compare_digest(self.default_store.settings.analytics_key.encode(), key.encode())
+
     def store_by_ref(self, ref: str) -> StoreRecord | None:
         """A store by id or slug (the ``X-Checkout-Store`` header)."""
         ref = ref.strip()

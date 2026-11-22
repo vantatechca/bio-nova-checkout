@@ -53,6 +53,11 @@ def rotate_webhook_secret(db: DbSession, store: AdminStore) -> dict[str, str]:
     return {"webhookSecret": settings_service.rotate_webhook_secret(db, store)}
 
 
+@router.post("/settings/rotate-analytics-key")
+def rotate_analytics_key(db: DbSession, store: AdminStore) -> dict[str, str]:
+    return {"analyticsKey": settings_service.rotate_analytics_key(db, store)}
+
+
 @router.post("/test-session", response_model=SessionOut, status_code=201)
 def create_test_session(request: Request, db: DbSession, store: AdminStore):
     """A throwaway sample cart so the checkout page can be tried without a connected store."""
