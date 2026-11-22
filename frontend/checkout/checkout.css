@@ -51,7 +51,7 @@ h1, h2, h3 { letter-spacing: 0; }
 .main-nav a:hover { color: var(--brand); border-color: var(--brand); }
 .header-tools { justify-self: end; display: flex; align-items: center; gap: 22px; }
 .secure-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ok); white-space: nowrap; }
-.reserve-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.reserve-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--danger-soft); color: var(--danger); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 .reserve-pill svg { width: 15px; height: 15px; }
 .reserve-pill b { font-variant-numeric: tabular-nums; }
 
@@ -167,8 +167,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .item-price { font-weight: 800; }
 .item-price-col { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .item-msrp { font-size: 12.5px; font-weight: 600; color: var(--text-3); text-decoration: line-through; }
-.free-badge { display: inline-flex; align-items: center; font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ok); }
-.free-badge.bf { padding: 4px 9px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
+.item.bf-item { background: var(--brand-soft); margin: 0 -24px; padding: 14px 24px; border-radius: var(--r-md); }
+.bf-badge { display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle; white-space: nowrap; }
 .totals { padding: 14px 24px 22px; background: var(--surface-2); border-top: 1px solid var(--line); }
 .line { display: flex; justify-content: space-between; padding: 5px 0; color: var(--text-2); font-size: 14.5px; }
 .line.savings { color: var(--ok); font-weight: 700; }

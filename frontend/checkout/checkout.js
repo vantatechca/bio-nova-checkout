@@ -156,7 +156,7 @@ function itemPriceHtml(item) {
     ? `<span class="item-msrp num">${money(compareAt * item.quantity)}</span>`
     : '';
   const price = item.unit_amount === 0
-    ? `<span class="free-badge${isBlackFridayOn() ? ' bf' : ''}">${isBlackFridayOn() ? 'Free · Black Friday bonus' : 'Free'}</span>`
+    ? '<span class="free">Free</span>'
     : `<span class="item-price num">${money(item.unit_amount * item.quantity)}</span>`;
   return `<div class="item-price-col">${msrp}${price}</div>`;
 }
@@ -169,12 +169,15 @@ function promoBannerHtml() {
 function summaryHtml() {
   const count = session.items.reduce((n, i) => n + i.quantity, 0);
   const savings = session.items.reduce((sum, i) => sum + Math.max(0, (i.compare_at_amount || 0) - i.unit_amount) * i.quantity, 0);
-  const items = session.items.map((item) => `
-    <div class="item">
+  const items = session.items.map((item) => {
+    const isBfFree = item.unit_amount === 0 && isBlackFridayOn();
+    return `
+    <div class="item${isBfFree ? ' bf-item' : ''}">
       <div class="thumb">${item.image ? `<img src="${esc(item.image)}" alt="" referrerpolicy="no-referrer">` : esc(initial(item.name))}<span class="qty">${item.quantity}</span></div>
-      <div class="item-name">${esc(item.name)}${item.description ? `<small>${esc(item.description)}</small>` : ''}</div>
+      <div class="item-name">${esc(item.name)}${isBfFree ? '<span class="bf-badge">Black Friday bonus</span>' : ''}${item.description ? `<small>${esc(item.description)}</small>` : ''}</div>
       ${itemPriceHtml(item)}
-    </div>`).join('');
+    </div>`;
+  }).join('');
   return `
     <aside class="summary" id="summary">
       <div class="summary-head"><h2>Order summary</h2><span>${count} ${count === 1 ? 'item' : 'items'}</span></div>
