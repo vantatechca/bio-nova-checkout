@@ -12,6 +12,7 @@ export async function loadSettings() {
   const root = $('#view-settings');
   const paymentMethods = cfg.paymentMethods.map((m) => ({ ...m }));
   const navLinks = (cfg.navLinks ?? []).map((l) => ({ ...l }));
+  const promoPerks = (cfg.promoPerks ?? []).map((p) => ({ ...p }));
   const base = cfg.publicUrl.replace(/\/$/, '');
   const slug = state.stores.find((x) => x.id === cfg.storeId)?.slug ?? '';
   const storeHeader = state.stores.length > 1 ? `-H "X-Checkout-Store: ${esc(slug)}" ` : '';
@@ -38,7 +39,14 @@ export async function loadSettings() {
         <label>Store website <span class="muted">(where the logo links to)</span><input data-field="storeUrl" placeholder="https://yourstore.com" value="${esc(cfg.storeUrl)}"></label>
       </div>
       <label>Checkout notice <span class="muted">(optional — shown in a highlighted box, e.g. a policy or compliance notice)</span><textarea data-field="notice" maxlength="500" placeholder="Shown at the top of the checkout form and on the confirmation page">${esc(cfg.notice)}</textarea></label>
-      <label>Promo banner <span class="muted">(optional — shown as a blue callout in the order summary, e.g. a limited-time sale; also highlights any free items the same way)</span><textarea data-field="promoBanner" maxlength="500" placeholder="LIMITED TIME: 50% off sitewide, automatically applied at checkout. Free bundle included, while quantities last.">${esc(cfg.promoBanner)}</textarea></label>
+      <h3>Promo banner <span class="muted" style="font-weight:400">(optional — a callout in the order summary, e.g. a limited-time sale; also highlights any free items the same way)</span></h3>
+      <div class="grid2">
+        <label>Badge <span class="muted">(small pill above the headline)</span><input data-field="promoBadge" maxlength="100" placeholder="Black Friday · no codes needed" value="${esc(cfg.promoBadge)}"></label>
+        <label>Headline <span class="muted">(the bold line)</span><input data-field="promoBanner" maxlength="500" placeholder="At least 50% off + free bundle on all orders" value="${esc(cfg.promoBanner)}"></label>
+      </div>
+      <p class="muted" style="font-size:13.5px;margin:4px 0 8px">Up to 3 highlight cards shown below the headline (optional).</p>
+      <div data-role="promo-perks"></div>
+      <div class="row" style="margin-top:6px"><button data-role="add-perk">${icon('plus')} Add perk</button></div>
       <h3>Header menu links</h3>
       <p class="muted" style="font-size:13.5px;margin:0 0 12px">Up to 8 links shown in the checkout header, like your storefront's menu (HOME, SHOP, FAQ…).</p>
       <div data-role="nav-links"></div>
@@ -163,6 +171,27 @@ export async function loadSettings() {
     navLinks.push({ label: '', url: '' });
     drawLinks();
   });
+
+  // ---- promo-banner perk cards editor
+  const perksBox = $('[data-role=promo-perks]', root);
+  const drawPerks = () => {
+    perksBox.innerHTML = promoPerks.map((p, i) => `
+      <div class="nav-link-row">
+        <input data-pi="${i}" data-pk="label" value="${esc(p.label)}" placeholder="Label (e.g. Sitewide sale)" aria-label="Perk label">
+        <input data-pi="${i}" data-pk="description" value="${esc(p.description)}" placeholder="Short description" aria-label="Perk description">
+        <button class="danger icon-only" data-remove-perk="${i}" title="Remove" aria-label="Remove">${icon('x')}</button>
+      </div>`).join('');
+    $$('[data-pk]', perksBox).forEach((input) =>
+      input.addEventListener('input', () => { promoPerks[input.dataset.pi][input.dataset.pk] = input.value; }));
+    $$('[data-remove-perk]', perksBox).forEach((button) =>
+      button.addEventListener('click', () => { promoPerks.splice(button.dataset.removePerk, 1); drawPerks(); }));
+  };
+  drawPerks();
+  $('[data-role=add-perk]', root).addEventListener('click', () => {
+    if (promoPerks.length >= 3) return flash(null, false, 'You can add up to 3 perks');
+    promoPerks.push({ label: '', description: '' });
+    drawPerks();
+  });
   // Branding shares the page-wide "Save settings" request.
   $('[data-role=settings-store]', root)?.addEventListener('change', (e) => {
     state.settingsStore = Number(e.target.value);
@@ -213,7 +242,9 @@ export async function loadSettings() {
         logoUrl: field('logoUrl').value,
         storeUrl: field('storeUrl').value,
         notice: field('notice').value,
+        promoBadge: field('promoBadge').value,
         promoBanner: field('promoBanner').value,
+        promoPerks: promoPerks.filter((p) => p.label.trim() || p.description.trim()),
         navLinks: navLinks.filter((l) => l.label.trim() || l.url.trim()),
         shopifyDomain: field('shopifyDomain').value,
         shopifyStorefrontToken: field('shopifyStorefrontToken').value,

@@ -87,6 +87,13 @@ def _check_shop_domain(v: str) -> str:
     return v
 
 
+class PromoPerk(CamelModel):
+    """One highlight card shown inside the checkout's promo banner (e.g. "Free gift auto-added")."""
+
+    label: Text80 = Field(min_length=1)
+    description: Text200 = ""
+
+
 class NavLink(CamelModel):
     """A link shown in the checkout page's header menu (e.g. HOME, SHOP, FAQ)."""
 
@@ -114,9 +121,10 @@ class StoreSettings(CamelModel):
     store_url: Text2000 = ""  # where the logo links to
     nav_links: list[NavLink] = Field(default_factory=list, max_length=8)
     notice: Text500 = ""  # shown in the highlighted notice box on the checkout page
-    promo_banner: Text500 = (
-        ""  # shown as a blue callout in the order summary (e.g. a limited-time promo); blank = hidden
-    )
+    # Shown as a callout in the order summary (e.g. a limited-time promo); blank promo_banner = the whole thing is hidden.
+    promo_badge: Text100 = ""  # small pill label above the headline, e.g. "Black Friday - no codes needed"
+    promo_banner: Text500 = ""  # the bold headline, e.g. "At least 50% off + free bundle on all orders"
+    promo_perks: list[PromoPerk] = Field(default_factory=list, max_length=3)  # up to 3 highlight cards below it
     # Shopify connector (redirect a Shopify cart's "Checkout" button here)
     shopify_domain: Text200 = ""
     shopify_storefront_token: Text200 = ""  # Storefront API access token (read-only product data)
@@ -167,7 +175,9 @@ class StoreSettingsUpdate(CamelModel):
     store_url: Text2000 | None = None
     nav_links: list[NavLink] | None = Field(default=None, max_length=8)
     notice: Text500 | None = None
+    promo_badge: Text100 | None = None
     promo_banner: Text500 | None = None
+    promo_perks: list[PromoPerk] | None = Field(default=None, max_length=3)
     shopify_domain: Text200 | None = None
     shopify_storefront_token: Text200 | None = None
     card_provider: Text40 | None = None
@@ -289,7 +299,9 @@ STORE_ONLY_FIELDS = frozenset(
         "store_url",
         "nav_links",
         "notice",
+        "promo_badge",
         "promo_banner",
+        "promo_perks",
         "shopify_domain",
         "shopify_storefront_token",
     }

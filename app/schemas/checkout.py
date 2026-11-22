@@ -147,6 +147,11 @@ class NavLinkPublic(BaseModel):
     url: str
 
 
+class PromoPerkPublic(BaseModel):
+    label: str
+    description: str
+
+
 class Branding(BaseModel):
     """Storefront look-and-feel details for the checkout page header."""
 
@@ -154,7 +159,9 @@ class Branding(BaseModel):
     store_url: str
     nav_links: list[NavLinkPublic]
     notice: str
+    promo_badge: str
     promo_banner: str
+    promo_perks: list[PromoPerkPublic]
 
 
 class PublicSessionOut(BaseModel):

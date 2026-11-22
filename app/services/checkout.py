@@ -175,7 +175,9 @@ def public_view(config: AppConfig, session: CheckoutSession, order: Order | None
             store_url=store.store_url,
             nav_links=[{"label": link.label, "url": link.url} for link in store.nav_links],
             notice=store.notice,
+            promo_badge=store.promo_badge,
             promo_banner=store.promo_banner,
+            promo_perks=[{"label": p.label, "description": p.description} for p in store.promo_perks],
         ),
     )
 

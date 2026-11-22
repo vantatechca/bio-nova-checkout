@@ -163,7 +163,19 @@ function itemPriceHtml(item) {
 
 function promoBannerHtml() {
   const text = session.branding.promo_banner;
-  return text ? `<div class="promo-banner">${icon('clock')}<span>${esc(text)}</span></div>` : '';
+  if (!text) return '';
+  const badge = session.branding.promo_badge;
+  const perks = session.branding.promo_perks || [];
+  return `
+    <div class="promo-banner">
+      ${badge ? `<span class="promo-badge">${icon('check')}${esc(badge)}</span>` : ''}
+      <p class="promo-headline">${esc(text)}</p>
+      ${perks.length ? `<div class="promo-perks">${perks.map((p) => `
+        <div class="promo-perk">
+          <div class="promo-perk-head">${icon('check')}<b>${esc(p.label)}</b></div>
+          ${p.description ? `<p>${esc(p.description)}</p>` : ''}
+        </div>`).join('')}</div>` : ''}
+    </div>`;
 }
 
 function summaryHtml() {
