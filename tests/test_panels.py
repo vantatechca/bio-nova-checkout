@@ -353,6 +353,7 @@ class TestContent:
             "alert": "Two campaigns paused for review",
             "steps": [{"title": "Ad clicked"}, {"title": "Order placed", "text": "Sale matched to campaign"}],
             "bars": [{"label": "Mon", "value": 1200}, {"label": "Tue", "value": "1850", "hint": "record day"}],
+            "bars_style": "columns",
             "bars_total": "$3,050",
             "checklist": [{"text": "Confirm outcome", "owner": "Dana"}, {"text": "Done thing", "done": True}],
         }
@@ -360,7 +361,14 @@ class TestContent:
         assert r.status_code == 200, r.text
         stored = r.json()["content"]
         assert stored["bars"][0]["value"] == "1200" and stored["bars_total"] == "$3,050"
+        assert stored["bars_style"] == "columns"
         assert stored["checklist"][1]["done"] is True and stored["checklist"][0]["owner"] == "Dana"
+
+    def test_bars_style_must_be_rows_or_columns(self, ads):
+        assert (
+            self.put(ads, "canva", {"bars": [{"label": "x", "value": 1}], "bars_style": "sideways"}).status_code == 400
+        )
+        assert self.put(ads, "canva", {"bars": [{"label": "x", "value": 1}]}).json()["content"]["bars_style"] == "rows"
 
     def test_sites_are_only_allowed_in_live_sites_and_cards_only_in_card_info(self, ads, sites):
         site = {"name": "shop"}

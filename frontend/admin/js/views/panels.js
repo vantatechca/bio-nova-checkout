@@ -69,17 +69,26 @@ const stepsHtml = (list) => `<div class="pc-steps">${list.map((s, i) => `
     ${i ? `<span class="pc-step-arrow">${icon('chevron')}</span>` : ''}
     <div class="pc-step"><span class="pc-step-n">${i + 1}</span><b>${esc(s.title)}</b>${s.text ? `<small>${esc(s.text)}</small>` : ''}</div>`).join('')}</div>`;
 
-const barsHtml = (list, total) => {
+const barsHtml = (list, total, style = 'rows') => {
   const max = Math.max(...list.map((b) => Number.parseFloat(b.value)).filter((n) => Number.isFinite(n)), 1);
-  return `<div class="pc-bars">${list.map((b) => {
+  const pctOf = (b) => {
     const n = Number.parseFloat(b.value);
-    const pct = Number.isFinite(n) ? Math.max(0, Math.min(100, (n / max) * 100)) : 0;
-    return `<div class="pc-bar-row">
-      <span class="pc-bar-label">${esc(b.label)}</span>
-      <div class="pc-bar-track"><div class="pc-bar-fill" style="width:${pct}%"></div></div>
-      <span class="pc-bar-value">${esc(b.value)}</span>${b.hint ? `<small>${esc(b.hint)}</small>` : ''}
-    </div>`;
-  }).join('')}${total != null ? `<div class="pc-bar-total"><span>Total</span><b>${esc(total)}</b></div>` : ''}</div>`;
+    return Number.isFinite(n) ? Math.max(0, Math.min(100, (n / max) * 100)) : 0;
+  };
+  const body = style === 'columns'
+    ? `<div class="pc-bars-cols">${list.map((b) => `
+        <div class="pc-bar-col">
+          <span class="pc-bar-value">${esc(b.value)}</span>
+          <div class="pc-bar-col-track"><div class="pc-bar-col-fill" style="height:${pctOf(b)}%"></div></div>
+          <span class="pc-bar-label">${esc(b.label)}</span>${b.hint ? `<small>${esc(b.hint)}</small>` : ''}
+        </div>`).join('')}</div>`
+    : list.map((b) => `
+      <div class="pc-bar-row">
+        <span class="pc-bar-label">${esc(b.label)}</span>
+        <div class="pc-bar-track"><div class="pc-bar-fill" style="width:${pctOf(b)}%"></div></div>
+        <span class="pc-bar-value">${esc(b.value)}</span>${b.hint ? `<small>${esc(b.hint)}</small>` : ''}
+      </div>`).join('');
+  return `<div class="pc-bars">${total != null ? `<div class="pc-bars-head"><span></span><b>${esc(total)} total</b></div>` : ''}${body}</div>`;
 };
 
 const checklistHtml = (list) => `<ul class="pc-checklist">${list.map((item) => `

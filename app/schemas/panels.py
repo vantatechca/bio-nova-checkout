@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StrictBool, StringConstraints, model_validator
 
@@ -121,6 +121,9 @@ class PanelContent(StrictModel):
     metrics: list[Metric] | None = Field(default=None, max_length=24)
     steps: list[Step] | None = Field(default=None, max_length=12)  # a numbered "how this works" flow
     bars: list[BarItem] | None = Field(default=None, max_length=60)  # a simple bar chart
+    bars_style: Literal["rows", "columns"] = (
+        "rows"  # "rows": horizontal bars (ranked lists); "columns": vertical (e.g. a day-by-day series)
+    )
     bars_total: Cell | None = None  # an optional total line shown under the bar chart
     entries: list[Entry] | None = Field(default=None, max_length=200)
     sites: list[SiteRow] | None = Field(default=None, max_length=200)  # Sites > Live Sites only

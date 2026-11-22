@@ -212,7 +212,7 @@ one section. They appear in this order on the card.
 | `summary` | A short paragraph | text, up to 2000 characters |
 | `metrics` | Number tiles (up to 24) | `label` and `value` required. Optional `trend` and `hint` |
 | `steps` | A numbered "how this works" flow, shown as cards linked by arrows (up to 12) | `title` required. Optional `text` |
-| `bars` / `bars_total` | A simple bar chart (up to 60 bars), plus an optional total line | each bar: `label` and `value` required, optional `hint`. `bars_total` is text/number shown under the chart |
+| `bars` / `bars_style` / `bars_total` | A simple bar chart (up to 60 bars), plus an optional total line | each bar: `label` and `value` required, optional `hint`. `bars_style` is `"rows"` (horizontal, the default -- good for a ranked list like spend per city) or `"columns"` (vertical -- good for a short day-by-day series). `bars_total` is text/number shown above the chart |
 | `cards` | Credit cards (up to 50). **Credit Card Info only** | `label` and `last4` required. Optional `brand`, `note`, `spend`, `limit`, `currency`, `status` |
 | `sites` | A table of sites (up to 200). **Live Sites only** | `name` required. Optional `url`, `status`, `uptime_pct`, `response_ms`, `last_checked_at` |
 | `entries` | A list of items (up to 200) | `title` required. Optional `subtitle`, `city`, `url`, `image_url`, `status`, `rating`, `value`, `note`, `updated_at` |
@@ -278,6 +278,7 @@ one section. They appear in this order on the card.
     {"label": "Tue", "value": "1850"},
     {"label": "Wed", "value": "900"}
   ],
+  "bars_style": "columns",
   "bars_total": "$3,950",
   "checklist": [
     {"text": "Confirm Meta review outcome", "owner": "Dana", "done": false},
