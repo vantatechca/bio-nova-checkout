@@ -63,15 +63,41 @@ const dataTable = (t) => `<div class="table-wrap"><table>
   <thead><tr>${t.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>
   <tbody>${t.rows.map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
+const alertHtml = (text) => `<div class="pc-alert">${icon('alert')}<span>${esc(text)}</span></div>`;
+
+const stepsHtml = (list) => `<div class="pc-steps">${list.map((s, i) => `
+    ${i ? `<span class="pc-step-arrow">${icon('chevron')}</span>` : ''}
+    <div class="pc-step"><span class="pc-step-n">${i + 1}</span><b>${esc(s.title)}</b>${s.text ? `<small>${esc(s.text)}</small>` : ''}</div>`).join('')}</div>`;
+
+const barsHtml = (list, total) => {
+  const max = Math.max(...list.map((b) => Number.parseFloat(b.value)).filter((n) => Number.isFinite(n)), 1);
+  return `<div class="pc-bars">${list.map((b) => {
+    const n = Number.parseFloat(b.value);
+    const pct = Number.isFinite(n) ? Math.max(0, Math.min(100, (n / max) * 100)) : 0;
+    return `<div class="pc-bar-row">
+      <span class="pc-bar-label">${esc(b.label)}</span>
+      <div class="pc-bar-track"><div class="pc-bar-fill" style="width:${pct}%"></div></div>
+      <span class="pc-bar-value">${esc(b.value)}</span>${b.hint ? `<small>${esc(b.hint)}</small>` : ''}
+    </div>`;
+  }).join('')}${total != null ? `<div class="pc-bar-total"><span>Total</span><b>${esc(total)}</b></div>` : ''}</div>`;
+};
+
+const checklistHtml = (list) => `<ul class="pc-checklist">${list.map((item) => `
+    <li class="${item.done ? 'done' : ''}">${icon(item.done ? 'check-circle' : 'clock')}<span>${esc(item.text)}</span>${item.owner ? `<small class="pc-owner">${esc(item.owner)}</small>` : ''}</li>`).join('')}</ul>`;
+
 function content(c) {
   const parts = [];
   if (c.headline) parts.push(`<p class="pc-headline">${esc(c.headline)}</p>`);
+  if (c.alert) parts.push(alertHtml(c.alert));
   if (c.summary) parts.push(`<p class="pc-summary">${esc(c.summary)}</p>`);
   if (c.metrics?.length) parts.push(metrics(c.metrics));
+  if (c.steps?.length) parts.push(stepsHtml(c.steps));
+  if (c.bars?.length) parts.push(barsHtml(c.bars, c.bars_total));
   if (c.cards?.length) parts.push(cardRows(c.cards));
   if (c.sites?.length) parts.push(siteRows(c.sites));
   if (c.entries?.length) parts.push(entries(c.entries));
   if (c.table) parts.push(dataTable(c.table));
+  if (c.checklist?.length) parts.push(checklistHtml(c.checklist));
   return parts.join('') || '<p class="empty-inline">Nothing to show yet.</p>';
 }
 

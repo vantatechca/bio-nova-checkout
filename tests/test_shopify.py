@@ -21,6 +21,8 @@ def connected(h, shopify):
         12: FakeShopify.variant("Coffee Mug", "12.50", sku="MUG-1"),
         13: FakeShopify.variant("Limited Hoodie", "60.00", available=False),
         14: FakeShopify.variant("Euro Poster", "9.00", currency="EUR"),
+        15: FakeShopify.variant("Discounted Cap", "20.00", compare_at_price="40.00"),
+        16: FakeShopify.variant("Not Really Discounted Bottle", "15.00", compare_at_price="10.00"),
     }
     return shopify
 
@@ -51,6 +53,16 @@ class TestCreatingACheckout:
         assert session["items"][0]["image"] == "https://cdn.shopify.test/p.png"
         assert session["external_ref"] == "shopify:cart_abc" and session["metadata"] == {"source": "shopify"}
         assert session["success_url"] == STORE and session["cancel_url"] == f"{STORE}/cart"
+
+    def test_a_real_compare_at_price_is_kept_as_the_msrp(self, h, connected):
+        session_id = post(h, cart((15, 1))).json()["checkout_url"].split("=")[1]
+        item = h.client.get(f"/api/v1/checkout/sessions/{session_id}", headers=h.store).json()["items"][0]
+        assert item["unit_amount"] == 2000 and item["compare_at_amount"] == 4000
+
+    def test_a_compare_at_price_that_is_not_a_real_discount_is_dropped(self, h, connected):
+        session_id = post(h, cart((16, 1))).json()["checkout_url"].split("=")[1]
+        item = h.client.get(f"/api/v1/checkout/sessions/{session_id}", headers=h.store).json()["items"][0]
+        assert item["unit_amount"] == 1500 and item["compare_at_amount"] == 0
 
     def test_prices_sent_by_the_browser_are_ignored(self, h, connected):
         body = cart((11, 1))

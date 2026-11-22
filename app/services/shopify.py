@@ -30,6 +30,7 @@ query Variants($ids: [ID!]!) {
     ... on ProductVariant {
       id title sku availableForSale
       price { amount currencyCode }
+      compareAtPrice { amount }
       image { url }
       product { title featuredImage { url } }
     }
@@ -46,6 +47,7 @@ class Variant:
     sku: str
     available: bool
     unit_amount: int  # minor units
+    compare_at_amount: int  # minor units; 0 when Shopify has no compare-at price set
     currency: str
     image: str
 
@@ -105,6 +107,7 @@ class ShopifyClient:
             vid = int(node["id"].rsplit("/", 1)[1])
             product = node.get("product") or {}
             image = (node.get("image") or product.get("featuredImage") or {}).get("url") or ""
+            compare_at = node.get("compareAtPrice")
             found[vid] = Variant(
                 id=vid,
                 title=node.get("title") or "",
@@ -112,6 +115,7 @@ class ShopifyClient:
                 sku=node.get("sku") or "",
                 available=bool(node.get("availableForSale")),
                 unit_amount=int((Decimal(node["price"]["amount"]) * 100).to_integral_value()),
+                compare_at_amount=int((Decimal(compare_at["amount"]) * 100).to_integral_value()) if compare_at else 0,
                 currency=node["price"]["currencyCode"],
                 image=image,
             )
@@ -174,6 +178,8 @@ def create_checkout_from_cart(
                 sku=variant.sku[:100],
                 description="" if variant.is_default_variant else variant.title[:300],
                 image=variant.image,
+                # Only a real discount is worth showing; a compare-at price at or below the actual price isn't one.
+                compare_at_amount=(variant.compare_at_amount if variant.compare_at_amount > variant.unit_amount else 0),
             )
         )
 

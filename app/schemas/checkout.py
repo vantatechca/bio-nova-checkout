@@ -28,6 +28,9 @@ class LineItemIn(BaseModel):
     sku: Text100 = ""
     description: Text300 = ""
     image: str = ""
+    # The item's original ("compare at" / MSRP) price in minor units, if it has one and is actually discounted.
+    # 0 means "no comparison price" -- the checkout page then shows no savings for this item.
+    compare_at_amount: StrictInt = Field(default=0, ge=0)
 
     @field_validator("image")
     @classmethod
@@ -151,6 +154,7 @@ class Branding(BaseModel):
     store_url: str
     nav_links: list[NavLinkPublic]
     notice: str
+    promo_banner: str
 
 
 class PublicSessionOut(BaseModel):

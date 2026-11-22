@@ -175,6 +175,7 @@ def public_view(config: AppConfig, session: CheckoutSession, order: Order | None
             store_url=store.store_url,
             nav_links=[{"label": link.label, "url": link.url} for link in store.nav_links],
             notice=store.notice,
+            promo_banner=store.promo_banner,
         ),
     )
 
@@ -287,6 +288,7 @@ def complete_session(
                 description=it.get("description", ""),
                 image=it.get("image", ""),
                 unit_amount=it["unit_amount"],
+                compare_at_amount=it.get("compare_at_amount", 0),
                 quantity=it["quantity"],
             )
             for i, it in enumerate(session.items)

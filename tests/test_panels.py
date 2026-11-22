@@ -348,6 +348,20 @@ class TestContent:
         stored = r.json()["content"]
         assert stored["metrics"][0]["value"] == "99.9" and stored["table"]["rows"][0] == ["shop", "10"]
 
+    def test_the_newer_block_types_round_trip(self, ads):
+        content = {
+            "alert": "Two campaigns paused for review",
+            "steps": [{"title": "Ad clicked"}, {"title": "Order placed", "text": "Sale matched to campaign"}],
+            "bars": [{"label": "Mon", "value": 1200}, {"label": "Tue", "value": "1850", "hint": "record day"}],
+            "bars_total": "$3,050",
+            "checklist": [{"text": "Confirm outcome", "owner": "Dana"}, {"text": "Done thing", "done": True}],
+        }
+        r = self.put(ads, "canva", content)
+        assert r.status_code == 200, r.text
+        stored = r.json()["content"]
+        assert stored["bars"][0]["value"] == "1200" and stored["bars_total"] == "$3,050"
+        assert stored["checklist"][1]["done"] is True and stored["checklist"][0]["owner"] == "Dana"
+
     def test_sites_are_only_allowed_in_live_sites_and_cards_only_in_card_info(self, ads, sites):
         site = {"name": "shop"}
         assert self.put(sites, "gmb", {"sites": [site]}).status_code == 400
@@ -387,6 +401,8 @@ class TestContent:
             (ads, "excel", {"table": {"columns": ["a", "b"], "rows": [["only one"]]}}),
             (sites, "gmb", {"entries": [{"title": "x", "rating": 9}]}),
             (sites, "live_sites", {"sites": [{"name": "x", "uptime_pct": 120}]}),
+            (ads, "canva", {"steps": [{"text": "no title"}]}),  # title required
+            (ads, "canva", {"checklist": [{"owner": "x"}]}),  # text required
         ]
         for bot, section, content in bad:
             assert self.put(bot, section, content).status_code == 400, content

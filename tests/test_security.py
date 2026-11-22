@@ -153,6 +153,7 @@ class TestBranding:
             logoUrl="https://shop.test/logo.png",
             storeUrl="https://shop.test",
             notice="Please read our policy before ordering.",
+            promoBanner="Black Friday: 50% off sitewide.",
             navLinks=[
                 {"label": "Home", "url": "https://shop.test/"},
                 {"label": "Shop", "url": "https://shop.test/shop"},
@@ -160,12 +161,14 @@ class TestBranding:
         )
         settings = h.client.get("/api/admin/settings", headers=h.admin).json()
         assert settings["logoUrl"] == "https://shop.test/logo.png" and len(settings["navLinks"]) == 2
+        assert settings["promoBanner"] == "Black Friday: 50% off sitewide."
         session = h.create_session()
         branding = h.client.get(f"/api/public/sessions/{session['id']}").json()["branding"]
         assert branding == {
             "logo_url": "https://shop.test/logo.png",
             "store_url": "https://shop.test",
             "notice": "Please read our policy before ordering.",
+            "promo_banner": "Black Friday: 50% off sitewide.",
             "nav_links": [
                 {"label": "Home", "url": "https://shop.test/"},
                 {"label": "Shop", "url": "https://shop.test/shop"},
@@ -174,7 +177,7 @@ class TestBranding:
 
     def test_branding_defaults_to_empty(self, h):
         branding = h.client.get(f"/api/public/sessions/{h.create_session()['id']}").json()["branding"]
-        assert branding == {"logo_url": "", "store_url": "", "notice": "", "nav_links": []}
+        assert branding == {"logo_url": "", "store_url": "", "notice": "", "promo_banner": "", "nav_links": []}
 
     def test_branding_urls_must_be_http_and_links_need_both_fields(self, h):
         put = lambda body: h.client.put("/api/admin/settings", headers=h.admin, json=body)  # noqa: E731

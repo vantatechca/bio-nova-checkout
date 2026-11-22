@@ -79,6 +79,27 @@ class CardRow(StrictModel):
     status: Short | None = None
 
 
+class Step(StrictModel):
+    """One stage in a numbered "how this works" flow, shown as a row of cards linked by arrows."""
+
+    title: Label
+    text: Line | None = None
+
+
+class BarItem(StrictModel):
+    """One bar in a simple bar chart."""
+
+    label: Label
+    value: Cell
+    hint: Line | None = None
+
+
+class ChecklistItem(StrictModel):
+    text: Line
+    owner: Short | None = None  # who it's waiting on, shown as a small tag
+    done: StrictBool = False
+
+
 class DataTable(StrictModel):
     columns: list[_text(80, min_length=1)] = Field(min_length=1, max_length=12)
     rows: list[list[Cell]] = Field(max_length=500)
@@ -95,12 +116,19 @@ class PanelContent(StrictModel):
     """Everything a section can show. All parts are optional and can be combined."""
 
     headline: Line | None = None
+    alert: Line | None = None  # a one-line callout/warning, shown above everything else in the section
     summary: _text(2000) | None = None
     metrics: list[Metric] | None = Field(default=None, max_length=24)
+    steps: list[Step] | None = Field(default=None, max_length=12)  # a numbered "how this works" flow
+    bars: list[BarItem] | None = Field(default=None, max_length=60)  # a simple bar chart
+    bars_total: Cell | None = None  # an optional total line shown under the bar chart
     entries: list[Entry] | None = Field(default=None, max_length=200)
     sites: list[SiteRow] | None = Field(default=None, max_length=200)  # Sites > Live Sites only
     cards: list[CardRow] | None = Field(default=None, max_length=50)  # Ads Data > Credit Card Info only
     table: DataTable | None = None
+    checklist: list[ChecklistItem] | None = Field(
+        default=None, max_length=50
+    )  # a to-do list, each item may name an owner
 
 
 class WriteIn(StrictModel):

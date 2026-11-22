@@ -208,16 +208,21 @@ one section. They appear in this order on the card.
 | Part | What it is | Fields |
 | --- | --- | --- |
 | `headline` | One bold line | text, up to 300 characters |
+| `alert` | A one-line callout/warning, shown above everything else | text, up to 300 characters |
 | `summary` | A short paragraph | text, up to 2000 characters |
 | `metrics` | Number tiles (up to 24) | `label` and `value` required. Optional `trend` and `hint` |
+| `steps` | A numbered "how this works" flow, shown as cards linked by arrows (up to 12) | `title` required. Optional `text` |
+| `bars` / `bars_total` | A simple bar chart (up to 60 bars), plus an optional total line | each bar: `label` and `value` required, optional `hint`. `bars_total` is text/number shown under the chart |
 | `cards` | Credit cards (up to 50). **Credit Card Info only** | `label` and `last4` required. Optional `brand`, `note`, `spend`, `limit`, `currency`, `status` |
 | `sites` | A table of sites (up to 200). **Live Sites only** | `name` required. Optional `url`, `status`, `uptime_pct`, `response_ms`, `last_checked_at` |
 | `entries` | A list of items (up to 200) | `title` required. Optional `subtitle`, `city`, `url`, `image_url`, `status`, `rating`, `value`, `note`, `updated_at` |
 | `table` | A free-form table | `columns` (up to 12 names) and `rows` (up to 500; each row has one cell per column) |
+| `checklist` | A to-do list (up to 50 items) | `text` required. Optional `owner` (shown as a small tag) and `done` (true/false, default false) |
 
 ### Rules for values
 
-- **Numbers or text:** `value`, `trend` and table cells accept both (`4.2`, `"4.2x"`). They are shown as text.
+- **Numbers or text:** `value`, `trend`, bar `value`/`bars_total` and table cells accept both (`4.2`, `"4.2x"`). They are shown as text.
+- **Bar charts** size each bar relative to the largest value in the same `bars` list, so values should use the same unit within one chart.
 - **Trends:** a trend starting with `-` shows red; anything else shows green (`"+18%"`).
 - **Statuses** are free text, and some get a colour:
   - green: `up`, `live`, `active`, `ok`, `good`, `online`, `verified`, `paid`, `published`
@@ -246,6 +251,37 @@ one section. They appear in this order on the card.
   ],
   "entries": [
     {"title": "Spring promo carousel", "subtitle": "Meta", "image_url": "https://example.com/a.png", "value": "5.1x", "status": "live"}
+  ]
+}}
+```
+
+**Using the newer parts together** (any section)
+
+```json
+{"content": {
+  "headline": "City ads and checkout",
+  "alert": "Two campaigns paused by Meta for review -- spend may be understated today.",
+  "summary": "Spend is up but conversions are flat; most of the gap traces back to one city.",
+  "metrics": [
+    {"label": "Ad spend", "value": "$8,420"},
+    {"label": "Real sales", "value": "$19,900"},
+    {"label": "Ad clicks", "value": "3,140"}
+  ],
+  "steps": [
+    {"title": "Ad clicked", "text": "Visitor lands on the storefront with UTM tags"},
+    {"title": "Cart built", "text": "Items added, attribution kept for the session"},
+    {"title": "Checkout opened", "text": "Shopify hands off to the hosted checkout"},
+    {"title": "Order placed", "text": "Sale is matched back to the campaign"}
+  ],
+  "bars": [
+    {"label": "Mon", "value": "1200"},
+    {"label": "Tue", "value": "1850"},
+    {"label": "Wed", "value": "900"}
+  ],
+  "bars_total": "$3,950",
+  "checklist": [
+    {"text": "Confirm Meta review outcome", "owner": "Dana", "done": false},
+    {"text": "Re-tag the Toronto campaign", "owner": "Sam", "done": true}
   ]
 }}
 ```
@@ -395,7 +431,10 @@ applies to every section, not only Credit Card Info. In Credit Card Info, the `l
 | Entries / sites per section | 200 |
 | Cards per section | 50 |
 | Table | 12 columns, 500 rows |
-| Text | headline 300 characters, summary 2000, a table cell 300 |
+| Steps per section | 12 |
+| Bars per section | 60 |
+| Checklist items per section | 50 |
+| Text | headline/alert 300 characters, summary 2000, a table cell 300 |
 
 ---
 

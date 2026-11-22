@@ -114,6 +114,9 @@ class StoreSettings(CamelModel):
     store_url: Text2000 = ""  # where the logo links to
     nav_links: list[NavLink] = Field(default_factory=list, max_length=8)
     notice: Text500 = ""  # shown in the highlighted notice box on the checkout page
+    promo_banner: Text500 = (
+        ""  # shown as a blue callout in the order summary (e.g. a limited-time promo); blank = hidden
+    )
     # Shopify connector (redirect a Shopify cart's "Checkout" button here)
     shopify_domain: Text200 = ""
     shopify_storefront_token: Text200 = ""  # Storefront API access token (read-only product data)
@@ -164,6 +167,7 @@ class StoreSettingsUpdate(CamelModel):
     store_url: Text2000 | None = None
     nav_links: list[NavLink] | None = Field(default=None, max_length=8)
     notice: Text500 | None = None
+    promo_banner: Text500 | None = None
     shopify_domain: Text200 | None = None
     shopify_storefront_token: Text200 | None = None
     card_provider: Text40 | None = None
@@ -285,6 +289,7 @@ STORE_ONLY_FIELDS = frozenset(
         "store_url",
         "nav_links",
         "notice",
+        "promo_banner",
         "shopify_domain",
         "shopify_storefront_token",
     }

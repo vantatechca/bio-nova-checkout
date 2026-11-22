@@ -214,12 +214,14 @@ class FakeShopify:
         available: bool = True,
         currency: str = "USD",
         image: str | None = "https://cdn.shopify.test/p.png",
+        compare_at_price: str | None = None,
     ) -> dict:
         return {
             "title": title,
             "sku": sku,
             "availableForSale": available,
             "price": {"amount": price, "currencyCode": currency},
+            "compareAtPrice": {"amount": compare_at_price} if compare_at_price else None,
             "image": {"url": image} if image else None,
             "product": {"title": product, "featuredImage": None},
         }

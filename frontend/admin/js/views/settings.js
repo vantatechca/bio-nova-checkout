@@ -38,6 +38,7 @@ export async function loadSettings() {
         <label>Store website <span class="muted">(where the logo links to)</span><input data-field="storeUrl" placeholder="https://yourstore.com" value="${esc(cfg.storeUrl)}"></label>
       </div>
       <label>Checkout notice <span class="muted">(optional — shown in a highlighted box, e.g. a policy or compliance notice)</span><textarea data-field="notice" maxlength="500" placeholder="Shown at the top of the checkout form and on the confirmation page">${esc(cfg.notice)}</textarea></label>
+      <label>Promo banner <span class="muted">(optional — shown as a blue callout in the order summary, e.g. a limited-time sale; also highlights any free items the same way)</span><textarea data-field="promoBanner" maxlength="500" placeholder="LIMITED TIME: 50% off sitewide, automatically applied at checkout. Free bundle included, while quantities last.">${esc(cfg.promoBanner)}</textarea></label>
       <h3>Header menu links</h3>
       <p class="muted" style="font-size:13.5px;margin:0 0 12px">Up to 8 links shown in the checkout header, like your storefront's menu (HOME, SHOP, FAQ…).</p>
       <div data-role="nav-links"></div>
@@ -212,6 +213,7 @@ export async function loadSettings() {
         logoUrl: field('logoUrl').value,
         storeUrl: field('storeUrl').value,
         notice: field('notice').value,
+        promoBanner: field('promoBanner').value,
         navLinks: navLinks.filter((l) => l.label.trim() || l.url.trim()),
         shopifyDomain: field('shopifyDomain').value,
         shopifyStorefrontToken: field('shopifyStorefrontToken').value,

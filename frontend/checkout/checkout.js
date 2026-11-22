@@ -77,6 +77,33 @@ function showMessage({ iconName = 'clock', title, text }) {
 
 const noticeHtml = () => (session.branding.notice ? `<div class="notice">${esc(session.branding.notice)}</div>` : '');
 
+// ---------------------------------------------------------------- cart-reservation countdown (cosmetic urgency cue)
+let reserveInterval = null;
+function startReserveTimer(minutes = 20) {
+  clearInterval(reserveInterval);
+  let remaining = minutes * 60;
+  const tick = () => {
+    const node = document.querySelector('[data-role=reserve-time]');
+    if (!node) return clearInterval(reserveInterval);
+    node.textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+    if (remaining <= 0) return clearInterval(reserveInterval);
+    remaining -= 1;
+  };
+  tick();
+  reserveInterval = setInterval(tick, 1000);
+}
+
+function injectReservePill() {
+  const tools = document.querySelector('.header-tools');
+  if (!tools || tools.querySelector('[data-role=reserve-timer]')) return;
+  const pill = document.createElement('span');
+  pill.className = 'reserve-pill';
+  pill.dataset.role = 'reserve-timer';
+  pill.innerHTML = `${icon('clock')}<span class="txt">Cart reserved for <b data-role="reserve-time">20:00</b></span>`;
+  tools.appendChild(pill);
+  startReserveTimer();
+}
+
 // ---------------------------------------------------------------- boot
 async function init() {
   if (!sessionId) {
@@ -121,13 +148,32 @@ function pollUntilPaid(attempts = 30) {
 }
 
 // ---------------------------------------------------------------- order summary
+const isBlackFridayOn = () => Boolean(session.branding.promo_banner);
+
+function itemPriceHtml(item) {
+  const compareAt = item.compare_at_amount || 0;
+  const msrp = compareAt > item.unit_amount
+    ? `<span class="item-msrp num">${money(compareAt * item.quantity)}</span>`
+    : '';
+  const price = item.unit_amount === 0
+    ? `<span class="free-badge${isBlackFridayOn() ? ' bf' : ''}">${isBlackFridayOn() ? 'Free · Black Friday bonus' : 'Free'}</span>`
+    : `<span class="item-price num">${money(item.unit_amount * item.quantity)}</span>`;
+  return `<div class="item-price-col">${msrp}${price}</div>`;
+}
+
+function promoBannerHtml() {
+  const text = session.branding.promo_banner;
+  return text ? `<div class="promo-banner">${icon('clock')}<span>${esc(text)}</span></div>` : '';
+}
+
 function summaryHtml() {
   const count = session.items.reduce((n, i) => n + i.quantity, 0);
+  const savings = session.items.reduce((sum, i) => sum + Math.max(0, (i.compare_at_amount || 0) - i.unit_amount) * i.quantity, 0);
   const items = session.items.map((item) => `
     <div class="item">
       <div class="thumb">${item.image ? `<img src="${esc(item.image)}" alt="" referrerpolicy="no-referrer">` : esc(initial(item.name))}<span class="qty">${item.quantity}</span></div>
       <div class="item-name">${esc(item.name)}${item.description ? `<small>${esc(item.description)}</small>` : ''}</div>
-      <div class="item-price num">${money(item.unit_amount * item.quantity)}</div>
+      ${itemPriceHtml(item)}
     </div>`).join('');
   return `
     <aside class="summary" id="summary">
@@ -137,8 +183,10 @@ function summaryHtml() {
         <div class="line"><span>Subtotal</span><span class="num">${money(session.subtotal)}</span></div>
         <div class="line"><span>Shipping</span><span class="num">${session.shipping ? money(session.shipping) : '<span class="free">Free</span>'}</span></div>
         ${session.tax ? `<div class="line"><span>Tax</span><span class="num">${money(session.tax)}</span></div>` : ''}
+        ${savings > 0 ? `<div class="line savings"><span>You saved off MSRP</span><span class="num">−${money(savings)}</span></div>` : ''}
         <div class="line total"><span>Total</span><span class="num"><small>${esc(session.currency)}</small>${money(session.total)}</span></div>
       </div>
+      ${promoBannerHtml()}
       ${promoHtml()}
     </aside>`;
 }
@@ -291,6 +339,7 @@ function renderForm() {
   });
   wirePaymentMethods();
   wireRegionPicker();
+  injectReservePill();
 }
 
 /** State/province is a list for countries that have one (US, Canada, Australia), a free text box otherwise. */
