@@ -33,12 +33,13 @@ export async function loadSettings() {
       <p class="muted" style="font-size:13.5px;margin-top:10px">The response contains <code>checkout_url</code>, the page the customer is sent to. Amounts are in minor units (cents).</p>
     </div>
 
-    <div class="card"><h2>Analytics (read-only) <span class="scope shared">Shared by all stores</span></h2><p class="sub">For a bot or analytics tool that only needs to read reports — attribution, payment attempts, visits, revenue, abandoned sessions. It cannot change anything, unlike an admin login.</p>
+    <div class="card"><h2>Analytics (read-only) <span class="scope shared">Shared by all stores</span></h2><p class="sub">For a bot or analytics tool that only needs to read reports — attribution, payment attempts, visits, revenue, orders, abandoned sessions. It cannot change anything, unlike an admin login, and it never returns a customer's name, email, address or raw IP.</p>
       <label>Analytics key</label>
       <div class="secret"><div class="mono" data-role="analytics-key">${MASK}</div><button data-role="show-analytics-key">Show</button><button class="danger" data-role="rotate-analytics-key">Rotate</button></div>
-      <pre class="mono">curl ${esc(base)}/api/v1/analytics/attribution \\
+      <pre class="mono">curl "${esc(base)}/api/v1/analytics/attribution?date_from=2026-11-17&date_to=2026-11-19" \\
   -H "Authorization: Bearer YOUR_ANALYTICS_KEY" ${storeHeader}</pre>
-      <p class="muted" style="font-size:13.5px;margin-top:10px">Same routes as this admin's own reports: <code>/stats</code>, <code>/revenue</code>, <code>/visits</code>, <code>/visits/lookup</code>, <code>/attribution</code>, <code>/attempts</code>, <code>/abandoned</code>, <code>/sessions/&lt;id&gt;/timeline</code>.</p>
+      <p class="muted" style="font-size:13.5px;margin-top:10px">Routes: <code>/stats</code>, <code>/revenue</code>, <code>/visits</code>, <code>/visits/lookup</code>, <code>/attribution</code>, <code>/attempts</code>, <code>/abandoned</code>, <code>/orders/&lt;number&gt;</code>, <code>/sessions/&lt;id&gt;/timeline</code>.
+      Date range: either <code>days</code> (1-366, default 30) or an exact <code>date_from</code>/<code>date_to</code> pair as shown above. Long lists (<code>/visits/lookup</code>, <code>/abandoned</code>, <code>/attempts</code>) take <code>limit</code> and <code>offset</code> to page through more than the default.${state.stores.length > 1 ? ' Add <code>X-Checkout-Store: &lt;store id&gt;</code> to scope a request to one store; left out, every store\'s data is included.' : ''}</p>
     </div>
 
     <div class="card"><h2>Branding <span class="scope own">This store only</span></h2><p class="sub">Make the customer checkout page match your storefront.</p>

@@ -8,7 +8,8 @@
 | API key (`sk_…`) | send as `Authorization: Bearer <key>` on calls to our API |
 | Signing secret (`capi_…`) | verify the signature on requests we send to your endpoint |
 
-Interactive API reference: `https://bio-nova-checkout.onrender.com/api/docs`
+There's no public interactive API reference (Swagger/OpenAPI) -- the private API's shape isn't exposed
+without a key. [redirect-payment.md](redirect-payment.md) below is the reference for this integration.
 
 ## What you build
 1. One endpoint that receives our signed `create_payment` request and replies with your payment page URL.

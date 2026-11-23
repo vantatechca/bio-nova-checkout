@@ -10,6 +10,10 @@ router = APIRouter(prefix="/api/admin", tags=["admin: reports"])
 
 # ``tz`` is the browser's Date.getTimezoneOffset() so "today" and daily buckets match the admin's local days.
 TzOffset = Query(default=0, ge=-900, le=900)
+DaysQuery = Query(default=30, ge=1, le=reports.MAX_DAYS)
+# An exact calendar window (inclusive, "YYYY-MM-DD"); give both to use this instead of ``days``.
+DateFromQuery = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+DateToQuery = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 @router.get("/stats", response_model=StatsOut)
@@ -18,26 +22,63 @@ def stats(db: DbSession, config: Config, store: StoreScope):
 
 
 @router.get("/revenue", response_model=RevenueOut)
-def revenue(db: DbSession, config: Config, store: StoreScope, days: int = 30, tz: int = TzOffset):
-    return reports.revenue_report(db, config, reports.clamp_days(days), tz, store)
+def revenue(
+    db: DbSession,
+    config: Config,
+    store: StoreScope,
+    days: int = DaysQuery,
+    tz: int = TzOffset,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+):
+    return reports.revenue_report(db, config, days, tz, store, date_from, date_to)
 
 
 @router.get("/visits", response_model=VisitsOut)
-def visits(db: DbSession, store: StoreScope, days: int = 30, tz: int = TzOffset):
-    return reports.visits_report(db, reports.clamp_days(days), tz, store)
+def visits(
+    db: DbSession,
+    store: StoreScope,
+    days: int = DaysQuery,
+    tz: int = TzOffset,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+):
+    return reports.visits_report(db, days, tz, store, date_from, date_to)
 
 
 @router.get("/attribution", response_model=AttributionOut)
-def attribution(db: DbSession, config: Config, store: StoreScope, days: int = 30):
-    return reports.attribution_report(db, config, days, store)
+def attribution(
+    db: DbSession,
+    config: Config,
+    store: StoreScope,
+    days: int = DaysQuery,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+):
+    return reports.attribution_report(db, config, days, store, date_from, date_to)
 
 
 @router.get("/attempts", response_model=AttemptStatsOut)
-def attempts(db: DbSession, store: StoreScope, days: int = 30):
-    return reports.attempts_report(db, days, store)
+def attempts(
+    db: DbSession,
+    store: StoreScope,
+    days: int = DaysQuery,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+):
+    return reports.attempts_report(db, days, store, date_from, date_to)
 
 
 @router.get("/visits/lookup", response_model=list[VisitRow])
-def visits_lookup(db: DbSession, store: StoreScope, ip: str = Query(default="", max_length=45), days: int = 30):
+def visits_lookup(
+    db: DbSession,
+    store: StoreScope,
+    ip: str = Query(default="", max_length=45),
+    days: int = DaysQuery,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+):
     """``ip`` filters by prefix; left empty, this is just the most recent visits."""
-    return reports.visits_by_ip(db, ip, days, store)
+    return reports.visits_by_ip(db, ip, days, store, limit, offset, date_from, date_to)

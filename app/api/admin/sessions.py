@@ -13,7 +13,7 @@ HoursQuery = Query(default=6, ge=1, le=24 * 30)
 
 @router.get("/abandoned", response_model=AbandonedSessionsOut)
 def abandoned(db: DbSession, store: StoreScope, hours: int = HoursQuery):
-    rows = sessions.abandoned_sessions(db, hours, store)
+    rows, _has_more = sessions.abandoned_sessions(db, hours, store)
     return AbandonedSessionsOut(hours=hours, rows=rows)
 
 

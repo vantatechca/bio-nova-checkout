@@ -151,9 +151,10 @@ class OrderRepository:
         ).one()
         return RevenueSums(*(int(v) for v in row))
 
-    def paid_since(self, currency: str, since: datetime) -> list[tuple[int, datetime]]:
+    def paid_since(self, currency: str, since: datetime, until: datetime | None = None) -> list[tuple[int, datetime]]:
+        window = PAID_AT.between(since, until) if until is not None else since <= PAID_AT
         rows = self.db.execute(
-            select(Order.total, PAID_AT).where(_paid_revenue(currency), _scope(self.store_id), since <= PAID_AT)
+            select(Order.total, PAID_AT).where(_paid_revenue(currency), _scope(self.store_id), window)
         ).all()
         return [(int(total), paid_at) for total, paid_at in rows]
 

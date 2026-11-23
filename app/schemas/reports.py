@@ -127,3 +127,4 @@ class AttemptStatsOut(BaseModel):
     recovered: int
     by_reason: list[AttemptRow]
     recent: list[RecentAttempt]
+    recent_has_more: bool = False

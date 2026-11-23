@@ -30,3 +30,24 @@ class TimelineItemOut(BaseModel):
     at: datetime
     kind: str
     text: str
+
+
+# ---------------------------------------------------------------- read-only analytics (no customer PII)
+class AnalyticsAbandonedSessionOut(BaseModel):
+    """Same as ``AbandonedSessionOut`` but without the customer's name/email -- for the read-only analytics key."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    store_id: int
+    created_at: datetime
+    viewed_at: datetime | None
+    total: int
+    currency: str
+    steps: list[str]
+
+
+class AnalyticsAbandonedSessionsOut(BaseModel):
+    hours: int
+    rows: list[AnalyticsAbandonedSessionOut]
+    has_more: bool = False

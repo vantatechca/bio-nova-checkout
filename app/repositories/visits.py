@@ -40,66 +40,81 @@ class VisitRepository:
         )
         return self.db.scalar(stmt) is not None
 
-    def totals(self, since: datetime) -> tuple[int, int]:
+    @staticmethod
+    def _window(column, since: datetime, until: datetime | None) -> ColumnElement[bool]:
+        return column.between(since, until) if until is not None else column >= since
+
+    def totals(self, since: datetime, until: datetime | None = None) -> tuple[int, int]:
         views, visitors = self.db.execute(
             select(func.count(Visit.id), func.count(func.distinct(Visit.visitor))).where(
-                Visit.at >= since, self._visits
+                self._window(Visit.at, since, until), self._visits
             )
         ).one()
         return int(views), int(visitors)
 
-    def daily(self, since: datetime, tz_offset_minutes: int) -> dict[str, tuple[int, int]]:
+    def daily(
+        self, since: datetime, tz_offset_minutes: int, until: datetime | None = None
+    ) -> dict[str, tuple[int, int]]:
         """Views and unique visitors per local day. ``tz_offset_minutes`` follows JS ``getTimezoneOffset()``."""
         local = func.date(func.date_sub(Visit.at, literal_column(f"INTERVAL {int(tz_offset_minutes)} MINUTE")))
         rows = self.db.execute(
             select(local, func.count(Visit.id), func.count(func.distinct(Visit.visitor)))
-            .where(Visit.at >= since, self._visits)
+            .where(self._window(Visit.at, since, until), self._visits)
             .group_by(local)
         ).all()
         return {day.isoformat(): (int(v), int(u)) for day, v, u in rows}
 
-    def devices(self, since: datetime, limit: int = 8) -> list[tuple[str, int]]:
+    def devices(self, since: datetime, limit: int = 8, until: datetime | None = None) -> list[tuple[str, int]]:
         n = func.count(Visit.id)
         rows = self.db.execute(
             select(Visit.device, n)
-            .where(Visit.at >= since, self._visits)
+            .where(self._window(Visit.at, since, until), self._visits)
             .group_by(Visit.device)
             .order_by(n.desc())
             .limit(limit)
         ).all()
         return [(label, int(c)) for label, c in rows]
 
-    def referrers(self, since: datetime, limit: int = 8) -> list[tuple[str, int]]:
+    def referrers(self, since: datetime, limit: int = 8, until: datetime | None = None) -> list[tuple[str, int]]:
         label = case((Visit.referrer == "", "(direct / unknown)"), else_=Visit.referrer)
         n = func.count(Visit.id)
         rows = self.db.execute(
-            select(label, n).where(Visit.at >= since, self._visits).group_by(label).order_by(n.desc()).limit(limit)
+            select(label, n)
+            .where(self._window(Visit.at, since, until), self._visits)
+            .group_by(label)
+            .order_by(n.desc())
+            .limit(limit)
         ).all()
         return [(name, int(c)) for name, c in rows]
 
-    def by_ip_prefix(self, prefix: str, since: datetime, limit: int = 50) -> list[Visit]:
+    def by_ip_prefix(
+        self, prefix: str, since: datetime, limit: int = 50, offset: int = 0, until: datetime | None = None
+    ) -> list[Visit]:
         """Individual visits whose stored IP starts with ``prefix`` (uses ``ix_visits_ip``)."""
         like = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         stmt = (
             select(Visit)
-            .where(Visit.ip.like(like), Visit.at >= since, self._visits)
+            .where(Visit.ip.like(like), self._window(Visit.at, since, until), self._visits)
             .order_by(Visit.at.desc())
+            .offset(offset)
             .limit(limit)
         )
         return list(self.db.scalars(stmt))
 
-    def steps(self, since: datetime) -> list[tuple[str, int]]:
+    def steps(self, since: datetime, until: datetime | None = None) -> list[tuple[str, int]]:
         """Distinct sessions reaching each checkout-form milestone, in the order a customer normally reaches them."""
         scope = CheckoutEvent.store_id == self.store_id if self.store_id is not None else true()
         n = func.count(CheckoutEvent.id)  # (session_id, step) is unique, so this already counts distinct sessions
         counts = dict(
             self.db.execute(
-                select(CheckoutEvent.step, n).where(CheckoutEvent.at >= since, scope).group_by(CheckoutEvent.step)
+                select(CheckoutEvent.step, n)
+                .where(self._window(CheckoutEvent.at, since, until), scope)
+                .group_by(CheckoutEvent.step)
             ).all()
         )
         return [(step, int(counts.get(step, 0))) for step in STEPS]
 
-    def funnel(self, since: datetime) -> FunnelCounts:
+    def funnel(self, since: datetime, until: datetime | None = None) -> FunnelCounts:
         s = CheckoutSession
         viewed = s.viewed_at.is_not(None)
         ordered = s.status == SessionStatus.COMPLETE
@@ -109,7 +124,7 @@ class VisitRepository:
 
         created, n_viewed, n_ordered, converted = self.db.execute(
             select(func.count(s.id), count_if(viewed), count_if(ordered), count_if(viewed & ordered)).where(
-                s.created_at >= since, self._sessions
+                self._window(s.created_at, since, until), self._sessions
             )
         ).one()
         return FunnelCounts(int(created), int(n_viewed), int(n_ordered), int(converted))

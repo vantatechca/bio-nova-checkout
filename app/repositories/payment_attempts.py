@@ -26,33 +26,40 @@ class PaymentAttemptRepository:
             self.db.scalar(select(func.count(PaymentAttempt.id)).where(PaymentAttempt.session_id == session_id)) or 0
         )
 
-    def reason_breakdown(self, since: datetime, limit: int = 8) -> list[tuple[str, int]]:
+    @staticmethod
+    def _window(since: datetime, until: datetime | None) -> ColumnElement[bool]:
+        return PaymentAttempt.at.between(since, until) if until is not None else PaymentAttempt.at >= since
+
+    def reason_breakdown(self, since: datetime, limit: int = 8, until: datetime | None = None) -> list[tuple[str, int]]:
         label = func.coalesce(func.nullif(PaymentAttempt.reason, ""), "(no reason given)")
         n = func.count(PaymentAttempt.id)
         rows = self.db.execute(
             select(label, n)
-            .where(PaymentAttempt.at >= since, PaymentAttempt.outcome == "declined", self._scope)
+            .where(self._window(since, until), PaymentAttempt.outcome == "declined", self._scope)
             .group_by(label)
             .order_by(n.desc())
             .limit(limit)
         ).all()
         return [(reason, int(c)) for reason, c in rows]
 
-    def recent(self, since: datetime, limit: int = 50) -> list[PaymentAttempt]:
+    def recent(
+        self, since: datetime, limit: int = 50, offset: int = 0, until: datetime | None = None
+    ) -> list[PaymentAttempt]:
         return list(
             self.db.scalars(
                 select(PaymentAttempt)
-                .where(PaymentAttempt.at >= since, self._scope)
+                .where(self._window(since, until), self._scope)
                 .order_by(PaymentAttempt.at.desc())
+                .offset(offset)
                 .limit(limit)
             )
         )
 
-    def recovered_since(self, since: datetime) -> int:
+    def recovered_since(self, since: datetime, until: datetime | None = None) -> int:
         """Sessions whose latest attempt in the window succeeded after at least one earlier decline."""
         latest = (
             select(PaymentAttempt.session_id, func.max(PaymentAttempt.attempt_no).label("max_attempt"))
-            .where(PaymentAttempt.at >= since, self._scope)
+            .where(self._window(since, until), self._scope)
             .group_by(PaymentAttempt.session_id)
             .subquery()
         )
@@ -68,7 +75,7 @@ class PaymentAttemptRepository:
         )
         return int(count or 0)
 
-    def counts_since(self, since: datetime) -> tuple[int, int, int]:
+    def counts_since(self, since: datetime, until: datetime | None = None) -> tuple[int, int, int]:
         """(total, declined, error) attempts in the window."""
         n = func.count(PaymentAttempt.id)
 
@@ -76,6 +83,6 @@ class PaymentAttemptRepository:
             return func.coalesce(func.sum(case((PaymentAttempt.outcome == outcome, 1), else_=0)), 0)
 
         total, declined, error = self.db.execute(
-            select(n, count_if("declined"), count_if("error")).where(PaymentAttempt.at >= since, self._scope)
+            select(n, count_if("declined"), count_if("error")).where(self._window(since, until), self._scope)
         ).one()
         return int(total), int(declined), int(error)

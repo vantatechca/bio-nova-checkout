@@ -60,9 +60,45 @@ class TestRevenue:
         assert amounts(0)[utc_day] == 5000 and amounts(0).get(toronto_day, 0) == 0
         assert amounts(300)[toronto_day] == 5000 and amounts(300).get(utc_day, 0) == 0
 
-    def test_range_is_clamped_to_supported_values(self, h):
-        assert h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 5}).json()["days"] == 30
+    def test_any_reasonable_day_count_is_honoured_exactly(self, h):
+        # Used to silently become 30 for anything outside {7, 30, 90}; now an exact window is actually computed.
+        assert h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 5}).json()["days"] == 5
+        assert h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 365}).json()["days"] == 365
+        assert h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 0}).status_code == 422
+        assert h.client.get("/api/admin/revenue", headers=h.admin, params={"days": 367}).status_code == 422
         assert h.client.get("/api/admin/revenue", headers=h.admin, params={"tz": 5000}).status_code == 400
+
+    def test_an_exact_date_range_can_be_requested_instead_of_days(self, h):
+        order = h.place_order("test")
+        h.sql(f"UPDATE orders SET paid_at = '2026-11-18 15:00:00' WHERE number = {order['number']}")
+        report = h.client.get(
+            "/api/admin/revenue", headers=h.admin, params={"date_from": "2026-11-17", "date_to": "2026-11-19"}
+        ).json()
+        assert report["days"] == 3 and len(report["daily"]) == 3
+        assert report["daily"][1]["date"] == "2026-11-18" and report["daily"][1]["amount"] == order["total"]
+        assert sum(d["amount"] for d in report["daily"]) == order["total"]
+        # outside the window: the order doesn't show up
+        report2 = h.client.get(
+            "/api/admin/revenue", headers=h.admin, params={"date_from": "2026-11-01", "date_to": "2026-11-10"}
+        ).json()
+        assert sum(d["amount"] for d in report2["daily"]) == 0
+
+    def test_date_range_validation(self, h):
+        assert (
+            h.client.get("/api/admin/revenue", headers=h.admin, params={"date_from": "2026-11-19"}).status_code == 400
+        )
+        assert (
+            h.client.get(
+                "/api/admin/revenue", headers=h.admin, params={"date_from": "2026-11-19", "date_to": "2026-11-01"}
+            ).status_code
+            == 400
+        )
+        assert (
+            h.client.get(
+                "/api/admin/revenue", headers=h.admin, params={"date_from": "not-a-date", "date_to": "2026-11-01"}
+            ).status_code
+            == 422
+        )
 
 
 class TestVisits:

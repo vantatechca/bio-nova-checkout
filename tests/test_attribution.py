@@ -65,6 +65,17 @@ class TestCapture:
         assert by_campaign["spring"]["revenue"] == 5000
         assert by_campaign["summer"]["orders"] == 1
 
+    def test_attribution_report_falls_back_to_the_click_network_when_theres_no_campaign_tag(self, h):
+        # Google Ads auto-tagging sends only gclid, with no utm_campaign unless one is manually configured --
+        # that traffic should still show up as attributed, not collapse into "(none)" alongside truly direct visits.
+        h.create_session(attribution={"click_provider": "google", "click_id": "g-1"})
+        h.create_session()  # genuinely no attribution at all
+
+        out = h.client.get("/api/admin/attribution", headers=h.admin, params={"days": 7}).json()
+        by_campaign = {row["campaign"]: row for row in out["rows"]}
+        assert by_campaign["google (no campaign tag)"]["sessions"] == 1
+        assert by_campaign["(none)"]["sessions"] == 1
+
     def test_orders_export_includes_attribution_columns(self, h):
         session = h.create_session(attribution={"utm_campaign": "spring"})
         h.complete(session["id"], "bank")

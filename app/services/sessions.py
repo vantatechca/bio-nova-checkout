@@ -27,11 +27,13 @@ class AbandonedSession:
 
 
 def abandoned_sessions(
-    db: Session, hours: int, store_id: int | None = None, limit: int = 200
-) -> list[AbandonedSession]:
-    sessions = SessionRepository(db).abandoned(hours, store_id, limit)
+    db: Session, hours: int, store_id: int | None = None, limit: int = 200, offset: int = 0
+) -> tuple[list[AbandonedSession], bool]:
+    """Returns ``(rows, has_more)``."""
+    fetched = SessionRepository(db).abandoned(hours, store_id, limit + 1, offset)
+    sessions, has_more = fetched[:limit], len(fetched) > limit
     if not sessions:
-        return []
+        return [], False
     ids = [s.id for s in sessions]
     steps_by_session: dict[str, list[str]] = {}
     rows = db.execute(select(CheckoutEvent.session_id, CheckoutEvent.step).where(CheckoutEvent.session_id.in_(ids)))
@@ -50,7 +52,7 @@ def abandoned_sessions(
             steps=steps_by_session.get(s.id, []),
         )
         for s in sessions
-    ]
+    ], has_more
 
 
 @dataclass(frozen=True)

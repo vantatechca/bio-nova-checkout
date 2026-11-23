@@ -66,7 +66,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Hosted Checkout", version=__version__, lifespan=lifespan, docs_url="/api/docs", redoc_url=None)
+    # No public docs/openapi: this API's shape (admin, panels, analytics routes and their schemas) is private,
+    # not just the keys that call it. A route's auth dependency still protects it either way, but there's no
+    # reason to let anyone map out every private endpoint and parameter name without even a key.
+    app = FastAPI(
+        title="Hosted Checkout", version=__version__, lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None
+    )
     app.state.admin_password = None  # set in lifespan
 
     app.include_router(api_router)

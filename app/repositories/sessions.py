@@ -32,7 +32,9 @@ class SessionRepository:
             .values(viewed_at=when)
         )
 
-    def abandoned(self, since_hours: int, store_id: int | None = None, limit: int = 200) -> list[CheckoutSession]:
+    def abandoned(
+        self, since_hours: int, store_id: int | None = None, limit: int = 200, offset: int = 0
+    ) -> list[CheckoutSession]:
         """Open sessions older than ``since_hours``, newest first: carts that were never finished."""
         scope: ColumnElement[bool] = CheckoutSession.store_id == store_id if store_id is not None else true()
         cutoff = utcnow() - timedelta(hours=since_hours)
@@ -40,6 +42,7 @@ class SessionRepository:
             select(CheckoutSession)
             .where(CheckoutSession.status == SessionStatus.OPEN, CheckoutSession.created_at < cutoff, scope)
             .order_by(CheckoutSession.created_at.desc())
+            .offset(offset)
             .limit(limit)
         )
         return list(self.db.scalars(stmt))
