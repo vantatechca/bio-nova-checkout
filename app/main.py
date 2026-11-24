@@ -123,7 +123,7 @@ def register_middleware(app: FastAPI) -> None:
             response.headers["Cache-Control"] = "no-store"
         if path.startswith("/api/public"):  # the checkout page may be embedded in / called from other origins
             response.headers["Access-Control-Allow-Origin"] = "*"
-        if path in ("/admin", "/checkout"):
+        if path in ("/admin", "/checkout", "/checkout-preview"):
             response.headers["X-Frame-Options"] = "DENY"
             response.headers["Referrer-Policy"] = "no-referrer"
         return response
@@ -153,5 +153,12 @@ def register_pages(app: FastAPI) -> None:
     @app.get("/checkout", include_in_schema=False)
     def checkout_page() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "checkout" / "index.html")
+
+    # Boss-review variant of the checkout page: same real session API, simpler promo banner.
+    # Remove this route (and frontend/checkout-preview) once the design is approved and folded
+    # back into the live /checkout page above.
+    @app.get("/checkout-preview", include_in_schema=False)
+    def checkout_preview_page() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "checkout-preview" / "index.html")
 
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
