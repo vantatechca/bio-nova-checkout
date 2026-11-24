@@ -177,13 +177,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .line.total small { font-size: 12px; font-weight: 700; color: var(--text-3); margin-right: 8px; letter-spacing: 0.06em; }
 .free { color: var(--ok); font-weight: 800; }
 /* ---------- Promo callouts: built from promo_badge/promo_banner/promo_perks ---------- */
-.promo-top { grid-column: 1 / -1; order: -2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--brand); color: #fff; border-radius: var(--r-md); padding: 12px 16px; }
-.promo-top-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-.promo-top-tag svg { width: 15px; height: 15px; }
-.promo-top-text { font-size: 15px; }
-.promo-top-chip { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; background: rgba(255, 255, 255, 0.16); border-radius: 999px; padding: 4px 10px; }
-.promo-top-chip svg { width: 14px; height: 14px; }
-@media (max-width: 560px) { .promo-top-chip { margin-left: 0; } }
+.promo-top { grid-column: 1 / -1; order: -2; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px 14px; background: var(--brand); color: #fff; border-radius: var(--r-md); padding: 12px 16px; overflow-x: auto; }
+.promo-top-tag { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.promo-top-tag svg { flex: none; width: 15px; height: 15px; }
+.promo-top-text { font-size: 15px; white-space: nowrap; }
+.promo-top-chip { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; background: rgba(255, 255, 255, 0.16); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.promo-top-chip svg { flex: none; width: 14px; height: 14px; }
+@media (max-width: 560px) {
+  .promo-top-text .txt, .promo-top-chip .txt { display: none; }
+}
 
 .promo-card { margin-top: 16px; border: 2px solid var(--brand); border-radius: var(--r-lg); background: #fff; padding: 16px 20px; }
 .promo-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

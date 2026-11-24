@@ -169,8 +169,8 @@ function promoTopHtml() {
   return `
     <div class="promo-top" role="note" aria-label="Promotion applied">
       ${badge ? `<span class="promo-top-tag">${icon('tag')}${esc(badge)}</span>` : ''}
-      <span class="promo-top-text"><strong>${esc(text)}</strong> already applied</span>
-      <span class="promo-top-chip">${icon('check')}No code needed</span>
+      <span class="promo-top-text"><strong>${esc(text)}</strong><span class="txt"> already applied</span></span>
+      <span class="promo-top-chip">${icon('check')}<span class="txt">No code needed</span></span>
     </div>`;
 }
 
