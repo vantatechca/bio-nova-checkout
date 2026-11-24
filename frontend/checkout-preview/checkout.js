@@ -164,9 +164,35 @@ function itemPriceHtml(item) {
   return `<div class="item-price-col">${msrp}${price}</div>`;
 }
 
-function promoBannerHtml() {
+/** Compact banner shown above the Contact section when a promo is on. */
+function promoTopHtml() {
+  const badge = session.branding.promo_badge;
   const text = session.branding.promo_banner;
-  return text ? `<div class="promo-banner">${icon('clock')}<span>${esc(text)}</span></div>` : '';
+  if (!text) return '';
+  return `
+    <div class="promo-top" role="note" aria-label="Promotion applied">
+      ${badge ? `<span class="promo-top-tag">${icon('clock')}${esc(badge)}</span>` : ''}
+      <span class="promo-top-text"><strong>${esc(text)}</strong> already applied</span>
+      <span class="promo-top-chip">${icon('check')}Applied to this order</span>
+    </div>`;
+}
+
+/** Fuller card shown in the summary column, above the trust lines, with the perk list spelled out. */
+function promoCardHtml() {
+  const badge = session.branding.promo_badge;
+  const text = session.branding.promo_banner;
+  const perks = session.branding.promo_perks || [];
+  if (!text) return '';
+  return `
+    <div class="promo-card" role="note" aria-label="Promotion applied to this order">
+      <div class="promo-card-head">
+        ${badge ? `<span class="promo-card-tag">${esc(badge)}</span>` : ''}
+        <span class="promo-card-ok">${icon('check')}Applied to this order</span>
+      </div>
+      <p class="promo-card-title">${esc(text)}</p>
+      ${perks.length ? `<ul class="promo-card-list">${perks.map((p) => `
+        <li>${icon('check')}<span>${p.label ? `<strong>${esc(p.label)}</strong> ` : ''}${esc(p.description)}</span></li>`).join('')}</ul>` : ''}
+    </div>`;
 }
 
 function summaryHtml() {
@@ -192,7 +218,6 @@ function summaryHtml() {
         ${savings > 0 ? `<div class="line savings"><span>You saved off MSRP</span><span class="num">−${money(savings)}</span></div>` : ''}
         <div class="line total"><span>Total</span><span class="num"><small>${esc(session.currency)}</small>${money(session.total)}</span></div>
       </div>
-      ${promoBannerHtml()}
       ${promoHtml()}
     </aside>`;
 }
@@ -286,6 +311,7 @@ function renderForm() {
   app.innerHTML = `
     <form class="flow" id="checkout-form" novalidate>
       ${noticeHtml()}
+      ${promoTopHtml()}
       <section class="panel">
         <div class="panel-head"><h2><span class="num-badge">1</span>Contact</h2><p>We'll send your receipt and updates here.</p></div>
         <fieldset>
@@ -327,7 +353,7 @@ function renderForm() {
       </section>
       ${trustHtml('trust-below')}
     </form>
-    <div class="summary-col">${summaryHtml()}${trustHtml()}</div>`;
+    <div class="summary-col">${summaryHtml()}${promoCardHtml()}${trustHtml()}</div>`;
   const form = document.querySelector('#checkout-form');
   const ADDRESS_FIELDS = ['line1', 'city', 'postal_code', 'country', 'state'];
   form.addEventListener('submit', submitOrder);
