@@ -302,9 +302,6 @@ STORE_ONLY_FIELDS = frozenset(
         "store_url",
         "nav_links",
         "notice",
-        "promo_badge",
-        "promo_banner",
-        "promo_perks",
         "shopify_domain",
         "shopify_storefront_token",
     }

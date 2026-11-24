@@ -20,7 +20,7 @@ export async function loadSettings() {
   root.innerHTML = `
     ${state.stores.length > 1 ? `<div class="card"><label style="margin:0">Editing settings for
       <select data-role="settings-store" style="max-width:360px">${state.stores.map((x) => `<option value="${x.id}" ${x.id === cfg.storeId ? 'selected' : ''}>${esc(x.name)}${x.active ? '' : ' (disabled)'}</option>`).join('')}</select></label>
-      <p class="muted" style="font-size:13px;margin:8px 0 0"><span class="scope own">This store only</span>: Branding and Shopify. <span class="scope shared">Shared by all stores</span>: API key, card payments, store &amp; checkout defaults and webhooks &mdash; change them once and every store uses them.</p></div>` : ''}
+      <p class="muted" style="font-size:13px;margin:8px 0 0"><span class="scope own">This store only</span>: logo, store website, notice, Shopify. <span class="scope shared">Shared by all stores</span>: API key, card payments, store &amp; checkout defaults, webhooks and the promo banner &mdash; change them once and every store uses them.</p></div>` : ''}
     <div class="card"><div class="card-head"><div><h2>Connect your store <span class="scope shared">Shared by all stores</span></h2><p class="sub" style="margin:0">One API key for server-to-server calls, for every store. Not for browser code.</p></div>
       <button class="primary" data-role="test-checkout">${icon('package')} Create test checkout</button></div>
       <label>API key</label>
@@ -48,7 +48,7 @@ export async function loadSettings() {
         <label>Store website <span class="muted">(where the logo links to)</span><input data-field="storeUrl" placeholder="https://yourstore.com" value="${esc(cfg.storeUrl)}"></label>
       </div>
       <label>Checkout notice <span class="muted">(optional — shown in a highlighted box, e.g. a policy or compliance notice)</span><textarea data-field="notice" maxlength="500" placeholder="Shown at the top of the checkout form and on the confirmation page">${esc(cfg.notice)}</textarea></label>
-      <h3>Promo banner <span class="muted" style="font-weight:400">(optional — a callout in the order summary, e.g. a limited-time sale; also highlights any free items the same way)</span></h3>
+      <h3>Promo banner <span class="scope shared">Shared by all stores</span> <span class="muted" style="font-weight:400">(optional — a callout in the order summary, e.g. a limited-time sale; also highlights any free items the same way)</span></h3>
       <div class="grid2">
         <label>Badge <span class="muted">(small pill above the headline)</span><input data-field="promoBadge" maxlength="100" placeholder="Black Friday · no codes needed" value="${esc(cfg.promoBadge)}"></label>
         <label>Headline <span class="muted">(the bold line)</span><input data-field="promoBanner" maxlength="500" placeholder="At least 50% off + free bundle on all orders" value="${esc(cfg.promoBanner)}"></label>
