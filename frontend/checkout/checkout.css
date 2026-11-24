@@ -177,7 +177,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .line.total small { font-size: 12px; font-weight: 700; color: var(--text-3); margin-right: 8px; letter-spacing: 0.06em; }
 .free { color: var(--ok); font-weight: 800; }
 /* ---------- Promo callouts: built from promo_badge/promo_banner/promo_perks ---------- */
-.promo-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--brand); color: #fff; border-radius: var(--r-md); padding: 12px 16px; }
+.promo-top { grid-column: 1 / -1; order: -2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--brand); color: #fff; border-radius: var(--r-md); padding: 12px 16px; }
 .promo-top-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .promo-top-tag svg { width: 15px; height: 15px; }
 .promo-top-text { font-size: 15px; }

@@ -306,9 +306,9 @@ function renderForm() {
   setStepper(1);
   app.className = 'layout';
   app.innerHTML = `
+    ${promoTopHtml()}
     <form class="flow" id="checkout-form" novalidate>
       ${noticeHtml()}
-      ${promoTopHtml()}
       <section class="panel">
         <div class="panel-head"><h2><span class="num-badge">1</span>Contact</h2><p>We'll send your receipt and updates here.</p></div>
         <fieldset>
