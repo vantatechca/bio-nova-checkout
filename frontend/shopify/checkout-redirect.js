@@ -190,7 +190,19 @@
 
   function finish(trigger, result) {
     if (!result) return;
-    if (result.ok && result.body.checkout_url) window.location.assign(result.body.checkout_url);
+    if (result.ok && result.body.checkout_url) {
+      var url = result.body.checkout_url;
+      if (window.Deep2k && window.Deep2k.beginCheckout) {
+        var done = false;
+        var go = function (u) { if (!done) { done = true; window.location.assign(u); } };
+        setTimeout(function () { go(url); }, 2500);
+        try {
+          window.Deep2k.beginCheckout(url).then(go, function () { go(url); });
+        } catch (e) { go(url); }
+      } else {
+        window.location.assign(url);
+      }
+    }
     else fail(trigger, result.body && result.body.error);
   }
 
