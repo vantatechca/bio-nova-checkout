@@ -57,11 +57,16 @@ class OrderOut(BaseModel):
     utm_term: str
     click_provider: str
     click_id: str
+    first_touch: dict
+    deep2k_anonymous_id: str
+    deep2k_session_id: str
+    landing_path: str
     order_ip: str
     order_country: str
     risk_flags: dict
     metadata: dict = Field(validation_alias="meta")
     paid_at: datetime | None
+    pending_since: datetime | None
     history: list[OrderEventOut]
     created_at: datetime
     updated_at: datetime

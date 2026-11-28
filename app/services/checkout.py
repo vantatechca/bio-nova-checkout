@@ -15,6 +15,7 @@ from app.models import CheckoutSession, Order, OrderItem, OrderStatus, PaymentSt
 from app.models.types import utcnow
 from app.repositories import OrderRepository, SessionRepository
 from app.schemas.checkout import (
+    AttributionIn,
     Branding,
     CardPublic,
     CompleteSessionIn,
@@ -61,7 +62,17 @@ def store_for(config: AppConfig, store_id: int) -> StoreRecord:
     return store
 
 
-def create_session(db: Session, store_record: StoreRecord, data: CreateSessionIn) -> CheckoutSession:
+def create_session(
+    db: Session,
+    store_record: StoreRecord,
+    data: CreateSessionIn,
+    *,
+    is_internal: bool = False,
+    first_touch: AttributionIn | None = None,
+    deep2k_anonymous_id: str = "",
+    deep2k_session_id: str = "",
+    landing_path: str = "",
+) -> CheckoutSession:
     store = store_record.settings
     currency = (data.currency or store.currency).strip().upper()
     if not re.fullmatch(r"[A-Z]{3}", currency):
@@ -94,6 +105,11 @@ def create_session(db: Session, store_record: StoreRecord, data: CreateSessionIn
         cancel_url=check_redirect_url(data.cancel_url, "cancel_url", store),
         external_ref=data.external_ref,
         meta=data.metadata,
+        is_internal=is_internal,
+        first_touch=(first_touch or AttributionIn()).model_dump(),
+        deep2k_anonymous_id=deep2k_anonymous_id[:200],
+        deep2k_session_id=deep2k_session_id[:200],
+        landing_path=landing_path[:300],
         expires_at=utcnow() + timedelta(hours=get_settings().session_ttl_hours),
     )
     attribution.apply(session, data.attribution)
@@ -178,7 +194,14 @@ def public_view(config: AppConfig, session: CheckoutSession, order: Order | None
             promo_badge=store.promo_badge,
             promo_banner=store.promo_banner,
             promo_perks=[{"label": p.label, "description": p.description} for p in store.promo_perks],
+            clarity_project_id=store.clarity_project_id,
+            posthog_project_key=store.posthog_project_key,
+            posthog_host=store.posthog_host,
         ),
+        store_id=session.store_id,
+        utm_campaign=session.utm_campaign,
+        has_click_id=bool(session.click_id),
+        deep2k_anonymous_id=session.deep2k_anonymous_id,
     )
 
 
@@ -275,11 +298,16 @@ def complete_session(
         utm_term=session.utm_term,
         click_provider=session.click_provider,
         click_id=session.click_id,
+        first_touch=session.first_touch,
+        deep2k_anonymous_id=session.deep2k_anonymous_id,
+        deep2k_session_id=session.deep2k_session_id,
+        landing_path=session.landing_path,
         order_ip=stored_ip(customer_ip, ip_mode),
         order_country=geoip.lookup(customer_ip).country,
         risk_flags=risk.evaluate(get_settings(), customer_ip, address, db),
         meta=session.meta,
         paid_at=now if payment_status == PaymentStatus.PAID else None,
+        pending_since=now if payment_status == PaymentStatus.PENDING else None,
         created_at=now,
         updated_at=now,
         items=[

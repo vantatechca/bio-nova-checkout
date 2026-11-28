@@ -89,6 +89,63 @@ class TestCreatingACheckout:
         assert order["order_number"] == 1001 and "$25.00" in order["payment_instructions"]
         assert h.order(1001)["external_ref"] == "shopify:cart_abc"
 
+    def test_first_touch_last_touch_and_deep2k_tags_are_persisted_on_the_session(self, h, connected):
+        """The X3 acceptance scenario: a shopper lands via an ad link, browses to a product in a new tab (first
+        touch stays frozen, last touch would differ if re-tagged), adds to cart, checks out. The session (API
+        and dashboard) shows the ad tags and Deep2K ids. Marked internal via X1's UA marker. Order is not placed.
+        """
+        h.configure(internalUserAgentMarkers="qa-tester-bot")
+        body = cart((11, 1))
+        body.update(
+            {
+                "attribution": {"gclid": "TEST-X3", "utm_source": "google", "utm_campaign": "24479394157"},
+                "first_touch": {"gclid": "TEST-X3", "utm_source": "google", "utm_campaign": "24479394157"},
+                "deep2k_anonymous_id": "anon-123",
+                "deep2k_session_id": "sess-456",
+                "landing_path": "/pages/about-us",
+            }
+        )
+        response = h.client.post(
+            "/api/shopify/checkout",
+            json=body,
+            headers={"Origin": STORE, "User-Agent": "Mozilla/5.0 qa-tester-bot/1.0"},
+        )
+        session_id = response.json()["checkout_url"].split("=")[1]
+        session = h.client.get(f"/api/v1/checkout/sessions/{session_id}", headers=h.store).json()
+
+        assert (session["click_provider"], session["click_id"]) == ("google", "TEST-X3")
+        assert session["utm_source"] == "google" and session["utm_campaign"] == "24479394157"
+        assert session["first_touch"] == {
+            "utm_source": "google",
+            "utm_medium": "",
+            "utm_campaign": "24479394157",
+            "utm_content": "",
+            "utm_term": "",
+            "click_id": "TEST-X3",
+            "click_provider": "google",
+        }
+        assert (session["deep2k_anonymous_id"], session["deep2k_session_id"]) == ("anon-123", "sess-456")
+        assert session["landing_path"] == "/pages/about-us"
+
+        is_internal = h.sql(f"SELECT is_internal FROM checkout_sessions WHERE id = '{session_id}'")[0][0]
+        assert bool(is_internal) is True
+
+    def test_first_touch_and_deep2k_tags_are_copied_to_the_order(self, h, connected):
+        body = cart((12, 1))
+        body.update(
+            {
+                "first_touch": {"utm_campaign": "launch-week"},
+                "deep2k_anonymous_id": "anon-999",
+                "landing_path": "/collections/new",
+            }
+        )
+        session_id = post(h, body).json()["checkout_url"].split("=")[1]
+        order_number = h.complete(session_id, "bank").json()["order_number"]
+        order = h.order(order_number)
+        assert order["first_touch"]["utm_campaign"] == "launch-week"
+        assert order["deep2k_anonymous_id"] == "anon-999"
+        assert order["landing_path"] == "/collections/new"
+
 
 class TestRejectedCarts:
     def test_unknown_variant(self, h, connected):

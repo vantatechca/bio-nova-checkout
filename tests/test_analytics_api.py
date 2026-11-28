@@ -34,6 +34,36 @@ class TestAnalyticsOrders:
         r = h.client.get(f"/api/v1/analytics/sessions/{session_id}/timeline", headers=headers)
         assert r.status_code == 200 and len(r.json()) > 0
 
+    def test_orders_list_has_masked_contact_info_not_raw_or_omitted(self, h):
+        order = h.place_order("test")  # default customer: Ada Lovelace <ada@example.com>, no phone
+        headers = self.analytics_headers(h)
+        r = h.client.get("/api/v1/analytics/orders", headers=headers)
+        assert r.status_code == 200, r.text
+        rows = r.json()["rows"]
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["number"] == order["number"] and row["status"] == order["status"]
+        assert row["total"] == order["total"] and row["currency"] == order["currency"]
+        assert row["created_at"] is not None  # "status and time" per the PDF's own acceptance test wording
+        assert row["customer_email_masked"] == "a**@example.com"  # masked, not raw ("ada@example.com")
+        assert row["customer_phone_masked"] == ""  # no phone was given -- masking "" is still ""
+        for field in ("customer", "shipping_address", "order_ip", "customer_email", "customer_phone", "notes"):
+            assert field not in row, field
+
+    def test_orders_list_pagination(self, h):
+        for _ in range(3):
+            h.place_order("test")
+        headers = self.analytics_headers(h)
+        page1 = h.client.get("/api/v1/analytics/orders", headers=headers, params={"limit": 2}).json()
+        assert len(page1["rows"]) == 2 and page1["has_more"] is True
+        page2 = h.client.get("/api/v1/analytics/orders", headers=headers, params={"limit": 2, "offset": 2}).json()
+        assert len(page2["rows"]) == 1 and page2["has_more"] is False
+
+    def test_orders_list_is_read_only(self, h):
+        headers = self.analytics_headers(h)
+        assert h.client.post("/api/v1/analytics/orders", headers=headers, json={}).status_code in (404, 405)
+        assert h.client.delete("/api/v1/analytics/orders", headers=headers).status_code in (404, 405)
+
 
 class TestAnalyticsAbandoned:
     def analytics_headers(self, h) -> dict[str, str]:
@@ -77,3 +107,11 @@ class TestAnalyticsVisitsLookupPaging:
             "/api/v1/analytics/visits/lookup", headers=headers, params={"limit": 2, "offset": 2}
         ).json()
         assert len(page1) == 2 and len(page2) == 1
+
+    def test_visitor_id_is_a_salted_hash_not_the_raw_ip(self, h):
+        h.client.get(f"/api/public/sessions/{h.create_session()['id']}")
+        headers = self.analytics_headers(h)
+        rows = h.client.get("/api/v1/analytics/visits/lookup", headers=headers).json()
+        assert len(rows) == 1
+        visitor_id = rows[0]["visitor_id"]
+        assert len(visitor_id) == 12 and "." not in visitor_id and "testclient" not in visitor_id

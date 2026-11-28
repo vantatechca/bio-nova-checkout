@@ -16,7 +16,7 @@ export function setToken(value) {
 }
 
 // Endpoints whose data is per store. Reads may span all stores; settings-style calls always need one store.
-const FILTERED = ['/orders', '/stats', '/revenue', '/visits', '/attribution', '/attempts', '/sessions'];
+const FILTERED = ['/orders', '/stats', '/revenue', '/visits', '/arrivals', '/attribution', '/attempts', '/sessions'];
 const PER_STORE = ['/settings', '/card', '/shopify', '/test-session'];
 
 function scoped(path) {

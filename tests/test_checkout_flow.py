@@ -97,6 +97,26 @@ class TestCustomerPage:
     def test_unknown_session_is_404(self, client):
         assert client.get("/api/public/sessions/cs_missing").status_code == 404
 
+    def test_session_replay_config_and_tags_are_blank_by_default(self, h):
+        session = h.create_session(attribution={"utm_campaign": "launch"})
+        body = h.client.get(f"/api/public/sessions/{session['id']}").json()
+        assert body["branding"]["clarity_project_id"] == "" and body["branding"]["posthog_project_key"] == ""
+        assert body["utm_campaign"] == "launch" and body["has_click_id"] is False
+        assert body["deep2k_anonymous_id"] == ""
+
+    def test_session_replay_config_reaches_the_public_session(self, h):
+        h.configure(clarityProjectId="abc123", posthogProjectKey="phc_test", posthogHost="https://eu.i.posthog.com")
+        session = h.create_session(
+            attribution={"utm_campaign": "24479394157", "click_provider": "google", "click_id": "TEST-X3"}
+        )
+        body = h.client.get(f"/api/public/sessions/{session['id']}").json()
+        store_id = h.client.get("/api/admin/settings", headers=h.admin).json()["storeId"]
+        assert body["branding"]["clarity_project_id"] == "abc123"
+        assert body["branding"]["posthog_project_key"] == "phc_test"
+        assert body["branding"]["posthog_host"] == "https://eu.i.posthog.com"
+        assert body["store_id"] == store_id
+        assert body["utm_campaign"] == "24479394157" and body["has_click_id"] is True
+
     def test_disabled_payment_methods_are_hidden_and_rejected(self, h):
         methods = [
             {"id": "bank", "label": "Bank transfer", "type": "offline", "instructions": "", "enabled": False},

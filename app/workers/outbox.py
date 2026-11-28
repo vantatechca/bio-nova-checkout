@@ -17,6 +17,7 @@ from app.repositories import OutboxRepository
 from app.services import emails, webhooks
 from app.services.config import config_service
 from app.services.maintenance import purge_old_data
+from app.services.orders import expire_stale_pending_payments
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ class OutboxWorker(threading.Thread):
                 if utcnow() >= self._next_maintenance:
                     with session_scope() as db:
                         purge_old_data(db)
+                    expire_stale_pending_payments()
                     self._next_maintenance = utcnow() + MAINTENANCE_EVERY
             except Exception:
                 log.exception("Outbox worker iteration failed")

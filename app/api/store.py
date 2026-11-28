@@ -8,7 +8,9 @@ from app.api.deps import ApiStore, Config, DbSession, base_url
 from app.repositories import OrderRepository
 from app.schemas.checkout import CreateSessionIn, SessionOut
 from app.schemas.orders import OrderListOut, OrderOut, OrderUpdateIn
+from app.security import client_ip
 from app.services import checkout, orders
+from app.services.visits import is_internal_request
 
 router = APIRouter(prefix="/api/v1", tags=["store api"])
 
@@ -16,7 +18,10 @@ router = APIRouter(prefix="/api/v1", tags=["store api"])
 @router.post("/checkout/sessions", response_model=SessionOut, status_code=201)
 def create_checkout_session(data: CreateSessionIn, request: Request, db: DbSession, caller: ApiStore):
     """Create a checkout session, then redirect the customer to the returned ``checkout_url``."""
-    session = checkout.create_session(db, caller.store, data)
+    internal = is_internal_request(
+        client_ip(request), request.headers.get("user-agent", ""), request.headers, caller.store.settings
+    )
+    session = checkout.create_session(db, caller.store, data, is_internal=internal)
     return checkout.session_out(session, base_url(request))
 
 

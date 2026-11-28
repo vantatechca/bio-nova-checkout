@@ -2,6 +2,7 @@
 import { icon } from '/static/shared/icons.js';
 import { loadProvider } from '/static/checkout/card/index.js';
 import { countries, regionsFor } from '/static/checkout/regions.js';
+import { initTracking } from '/static/checkout/tracking.js';
 
 const app = document.querySelector('#app');
 const sessionId = new URLSearchParams(location.search).get('session');
@@ -119,6 +120,7 @@ async function init() {
   session = await response.json();
   document.title = `Checkout · ${session.storeName}`;
   renderHeader();
+  initTracking(session);
 
   if (session.status === 'expired') {
     return showMessage({ title: 'This checkout has expired', text: 'Please return to the store and start again.' });
@@ -312,10 +314,10 @@ function renderForm() {
       <section class="panel">
         <div class="panel-head"><h2><span class="num-badge">1</span>Contact</h2><p>We'll send your receipt and updates here.</p></div>
         <fieldset>
-          <label><span class="req">Full name</span><input name="name" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="Ada Lovelace" required value="${esc(customer.name)}"></label>
+          <label><span class="req">Full name</span><input name="name" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="Ada Lovelace" required value="${esc(customer.name)}" data-clarity-mask="true"></label>
           <div class="row">
-            <label><span class="req">Email</span><input name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required value="${esc(customer.email)}"></label>
-            <label>Phone <span class="hint">(optional)</span><input name="phone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" value="${esc(customer.phone)}"></label>
+            <label><span class="req">Email</span><input name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required value="${esc(customer.email)}" data-clarity-mask="true"></label>
+            <label>Phone <span class="hint">(optional)</span><input name="phone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" value="${esc(customer.phone)}" data-clarity-mask="true"></label>
           </div>
         </fieldset>
       </section>
@@ -323,17 +325,17 @@ function renderForm() {
       <section class="panel">
         <div class="panel-head"><h2><span class="num-badge">2</span>Shipping address</h2><p>Where should we send your order?</p></div>
         <fieldset>
-          <label><span class="req">Address</span><input name="line1" autocomplete="address-line1" autocapitalize="words" enterkeyhint="next" placeholder="123 Main Street" required></label>
-          <label>Apartment, suite, etc. <span class="hint">(optional)</span><input name="line2" autocomplete="address-line2"></label>
+          <label><span class="req">Address</span><input name="line1" autocomplete="address-line1" autocapitalize="words" enterkeyhint="next" placeholder="123 Main Street" required data-clarity-mask="true"></label>
+          <label>Apartment, suite, etc. <span class="hint">(optional)</span><input name="line2" autocomplete="address-line2" data-clarity-mask="true"></label>
           <div class="row">
-            <label><span class="req">City</span><input name="city" autocomplete="address-level2" autocapitalize="words" enterkeyhint="next" required></label>
-            <label><span class="req">Country</span><select name="country" autocomplete="country-name" required>
+            <label><span class="req">City</span><input name="city" autocomplete="address-level2" autocapitalize="words" enterkeyhint="next" required data-clarity-mask="true"></label>
+            <label><span class="req">Country</span><select name="country" autocomplete="country-name" required data-clarity-mask="true">
               ${countries().length > 1 ? '<option value="">Select a country</option>' : ''}${countries().map((c) => `<option>${esc(c)}</option>`).join('')}
             </select></label>
           </div>
           <div class="row">
-            <label data-role="state-field">State / Province<input name="state" autocomplete="address-level1"></label>
-            <label><span class="req">Postal code</span><input name="postal_code" autocomplete="postal-code" inputmode="numeric" enterkeyhint="done" required></label>
+            <label data-role="state-field">State / Province<input name="state" autocomplete="address-level1" data-clarity-mask="true"></label>
+            <label><span class="req">Postal code</span><input name="postal_code" autocomplete="postal-code" inputmode="numeric" enterkeyhint="done" required data-clarity-mask="true"></label>
           </div>
         </fieldset>
       </section>

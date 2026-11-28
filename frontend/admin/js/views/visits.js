@@ -30,8 +30,35 @@ function stepFunnelHtml(steps) {
     </div>`).join('');
 }
 
+/** `store_id` -> store name, falling back to the id itself for a store no longer in `state.stores`. */
+function storeName(storeId) {
+  return state.stores.find((s) => s.id === storeId)?.name ?? `#${storeId}`;
+}
+
+function arrivalsTableHtml(rows) {
+  if (!rows.length) return '<p class="empty-inline">No arrivals in this period.</p>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th>${state.stores.length > 1 ? '<th>Store</th>' : ''}<th>Campaign</th><th>Term</th><th>Ad click id</th><th>Device</th><th>City</th><th>Arrivals</th><th>Views</th></tr></thead>
+    <tbody>${rows.map((r) => `
+      <tr><td>${esc(r.date)}</td>${state.stores.length > 1 ? `<td>${esc(storeName(r.store_id))}</td>` : ''}<td>${esc(r.utm_campaign || '(none)')}</td><td>${esc(r.utm_term || '—')}</td><td>${r.has_click_id ? 'Yes' : '—'}</td><td>${esc(r.device)}</td><td>${esc(r.city || '—')}</td><td>${r.arrivals}</td><td>${r.views}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function sessionsVsArrivalsTableHtml(rows) {
+  if (!rows.length) return '<p class="empty-inline">No sessions in this period.</p>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th>${state.stores.length > 1 ? '<th>Store</th>' : ''}<th>Campaign</th><th>Term</th><th>Ad click id</th><th>Pressed Checkout</th><th>Arrived</th></tr></thead>
+    <tbody>${rows.map((r) => `
+      <tr><td>${esc(r.date)}</td>${state.stores.length > 1 ? `<td>${esc(storeName(r.store_id))}</td>` : ''}<td>${esc(r.utm_campaign || '(none)')}</td><td>${esc(r.utm_term || '—')}</td><td>${r.has_click_id ? 'Yes' : '—'}</td><td>${r.sessions_created}</td><td>${r.arrived}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
 export async function loadVisits() {
-  const [, v] = await Promise.all([refreshCounts(), api(`/visits?days=${state.rangeDays}&tz=${TZ_OFFSET}`)]);
+  const [, v, arrivals] = await Promise.all([
+    refreshCounts(),
+    api(`/visits?days=${state.rangeDays}&tz=${TZ_OFFSET}`),
+    api(`/arrivals?days=${state.rangeDays}&tz=${TZ_OFFSET}`),
+  ]);
   const f = v.funnel;
   const sum = (rows) => rows.reduce((total, row) => total + row.count, 0);
   const root = $('#view-visits');
@@ -40,7 +67,8 @@ export async function loadVisits() {
     <div class="stats">
       ${stat('Checkout page views', v.views, '', 'eye')}
       ${stat('Unique visitors', v.visitors, '', 'users', 'info')}
-      ${stat('Sessions created', f.created, 'carts sent from your store', 'package')}
+      ${stat('Unique visitors (excluding internal)', v.visitors_excluding_internal, `${v.views_excluding_internal} views`, 'users', 'info')}
+      ${stat('Sessions created', f.created, 'carts sent from your store, excluding never-viewed internal/test sessions', 'package')}
       ${stat('Viewed checkout', f.viewed, '', 'eye', 'info')}
       ${stat('Placed order', f.ordered, '', 'check-circle', 'ok')}
       ${stat('Conversion', `${f.conversion}%`, 'orders ÷ viewed', 'target', 'ok')}
@@ -52,14 +80,23 @@ export async function loadVisits() {
       <div class="card"><h2>Referrers</h2><p class="sub">Where they came from</p>${meterList(v.referrers, sum(v.referrers))}</div>
     </div>
     <div class="card">
+      <h2>Checkout arrivals <span class="muted" style="font-weight:400">(the checkout-reach KPI feed — unique visitors who opened the checkout page, internal traffic excluded, by campaign/term/device/city)</span></h2>
+      ${arrivalsTableHtml(arrivals.rows)}
+      ${arrivals.has_more ? '<p class="muted" style="font-size:13px">More rows exist than shown — narrow the date range to see them all.</p>' : ''}
+      <h3 style="margin-top:20px">Pressed Checkout vs arrived</h3>
+      <p class="sub">Sessions created (internal/test sessions excluded) vs how many were ever opened, same campaign/term/click-id split — bucketed by the day the session was created, not the day it was opened.</p>
+      ${sessionsVsArrivalsTableHtml(arrivals.sessions_vs_arrivals)}
+      ${arrivals.sessions_has_more ? '<p class="muted" style="font-size:13px">More rows exist than shown — narrow the date range to see them all.</p>' : ''}
+    </div>
+    <div class="card">
       <h2>Recent visits</h2><p class="sub">The most recent visits (up to 50); optionally filter by the start of the stored address — in the default truncated mode that's a /24, e.g. 203.0.113, not a full host IP like 203.0.113.7</p>
       <div class="row"><input data-role="ip-input" placeholder="Filter by IP prefix (optional)" style="max-width:260px"><button class="small" data-role="ip-search">Search</button></div>
       <div class="table-wrap" style="margin-top:12px"><table>
-        <thead><tr><th>Time</th><th>IP</th><th>Country</th><th>City</th><th>Device</th><th>Referrer</th></tr></thead>
+        <thead><tr><th>Time</th><th>IP</th><th>Country</th><th>City</th><th>Device</th><th>Referrer</th><th>Internal</th></tr></thead>
         <tbody id="ip-results"></tbody>
       </table></div>
     </div>
-    <p class="muted" style="font-size:13px">Views are counted when a customer opens a checkout link (reloads within 10 minutes and bots are ignored). Visitors are identified by a first-party cookie, falling back to a salted hash of IP + browser. The IP itself is stored truncated by default (VISIT_IP_MODE) and resolved to a country/city when GeoIP databases are configured. Referrer is the page they came from, when the browser shares it.</p>`;
+    <p class="muted" style="font-size:13px">Views are counted when a customer opens a checkout link (reloads within 10 minutes and bots are ignored). Visitors are identified by a first-party cookie, falling back to a salted hash of IP + browser. The IP itself is stored truncated by default (VISIT_IP_MODE) and resolved to a country/city when GeoIP databases are configured. Referrer is the page they came from, when the browser shares it. <b>Internal</b> marks a visit whose IP matched a range under Settings &rarr; Internal/non-customer IP ranges — shown here, and counted separately above, but never removed from the raw totals.</p>`;
 
   const storeSelect = $('[data-role=store-filter]', root);
   if (storeSelect) bindStoreFilter(storeSelect, loadVisits);
@@ -78,8 +115,8 @@ async function lookupByIp(root) {
     const rows = await api(`/visits/lookup?ip=${encodeURIComponent(ip)}&days=${state.rangeDays}`);
     $('#ip-results').innerHTML = rows.length
       ? rows.map((r) => `
-          <tr><td>${esc(formatDate(r.at))}</td><td>${esc(r.ip)}</td><td>${esc(r.country || '—')}</td><td>${esc(r.city || '—')}</td><td>${esc(r.device)}</td><td>${esc(r.referrer || '—')}</td></tr>`).join('')
-      : `<tr><td colspan="6" class="empty-inline">${ip ? 'No matching visits.' : 'No visits in this period.'}</td></tr>`;
+          <tr><td>${esc(formatDate(r.at))}</td><td>${esc(r.ip)}</td><td>${esc(r.country || '—')}</td><td>${esc(r.city || '—')}</td><td>${esc(r.device)}</td><td>${esc(r.referrer || '—')}</td><td>${r.is_internal ? 'Yes' : '—'}</td></tr>`).join('')
+      : `<tr><td colspan="7" class="empty-inline">${ip ? 'No matching visits.' : 'No visits in this period.'}</td></tr>`;
   } catch (err) {
     flash(null, false, err.message);
   }

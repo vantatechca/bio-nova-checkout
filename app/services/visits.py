@@ -7,10 +7,13 @@ stored at all; the default ("truncated") never stores more than a /24 (IPv4) or 
 
 from __future__ import annotations
 
+import functools
 import hashlib
+import ipaddress
 import logging
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -20,6 +23,7 @@ from app.config import get_settings
 from app.models import CheckoutSession, Visit
 from app.models.types import utcnow
 from app.repositories import SessionRepository, VisitRepository
+from app.schemas.settings import StoreSettings
 from app.services import geoip
 from app.services.config import AppConfig
 
@@ -34,6 +38,7 @@ class VisitContext:
     host: str  # our own host, so internal referrers are ignored
     referrer: str  # document.referrer as reported by the page
     visitor_id: str = ""  # the bvid cookie, when the browser already has one
+    headers: Mapping[str, str] = field(default_factory=dict)  # for the internal_header_name/value marker check
 
 
 def device_of(user_agent: str) -> str:
@@ -65,6 +70,52 @@ def stored_ip(ip: str, mode: str) -> str:
     return ""  # not a recognisable IP literal
 
 
+@functools.lru_cache(maxsize=64)
+def _parsed_networks(ranges: tuple[str, ...]) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+    """Parses (and caches) a config's CIDR list -- this runs on every page view and session creation, so it's
+    worth not re-parsing the same strings on every single request. Keyed on the exact tuple of range strings,
+    so a settings change (a new tuple) just parses once more; nothing here can go stale."""
+    parsed = []
+    for entry in ranges:
+        try:
+            parsed.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError:
+            continue  # validated at save time (_check_ip_ranges); a bad entry here just never matches
+    return tuple(parsed)
+
+
+def is_internal_ip(ip: str, ranges: list[str]) -> bool:
+    """Whether ``ip`` falls in any of the configured internal/non-customer CIDR ranges (``StoreSettings
+    .internal_ip_range_list``). An unparsable ``ip`` is "not internal", not an error worth breaking the
+    checkout over."""
+    if not ranges:
+        return False
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr in network for network in _parsed_networks(tuple(ranges)))
+
+
+def is_internal_request(ip: str, user_agent: str, headers: Mapping[str, str], settings: StoreSettings) -> bool:
+    """Whether a request (visit, or a checkout session being created) should be treated as internal/non-customer
+    traffic: its IP falls in a configured range, its User-Agent contains a configured marker substring, or it
+    sends the configured marker header/value pair. Any one of the three is enough; none configured = never
+    internal, so this is a strict opt-in, not a default-on filter."""
+    if is_internal_ip(ip, settings.internal_ip_range_list):
+        return True
+    ua = user_agent.lower()
+    if any(marker in ua for marker in settings.internal_user_agent_marker_list):
+        return True
+    if (
+        settings.internal_header_name
+        and settings.internal_header_value
+        and headers.get(settings.internal_header_name) == settings.internal_header_value
+    ):
+        return True
+    return False
+
+
 def record_visit(db: Session, config: AppConfig, session: CheckoutSession, ctx: VisitContext) -> None:
     """Best effort: analytics must never break the checkout page, so failures are logged and swallowed."""
     device = device_of(ctx.user_agent)
@@ -77,6 +128,8 @@ def record_visit(db: Session, config: AppConfig, session: CheckoutSession, ctx: 
     visitor = visitor_source[:12]
     mode = get_settings().ip_mode
     geo = geoip.lookup(ctx.ip)
+    store = config.store_by_id(session.store_id)
+    internal = is_internal_request(ctx.ip, ctx.user_agent, ctx.headers, store.settings) if store else False
     now = utcnow()
     try:
         with db.begin_nested():  # savepoint: a failure here must not poison the request transaction
@@ -96,6 +149,7 @@ def record_visit(db: Session, config: AppConfig, session: CheckoutSession, ctx: 
                     city=geo.city,
                     asn=geo.asn or None,
                     isp=geo.isp,
+                    is_internal=internal,
                 )
             )
             SessionRepository(db).mark_viewed(session.id, now)

@@ -19,10 +19,12 @@ import httpx
 
 from app.errors import BadGateway, BadRequest
 from app.schemas.settings import StoreSettings
+from app.services.http import pooled_client
 
 log = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 20
+_client = pooled_client(TIMEOUT_SECONDS)
 UNAVAILABLE = "Card payments are temporarily unavailable. Please try another payment method."
 UNCONFIRMED = "We couldn't confirm your payment. Please try again — your card won't be charged twice."
 UNREACHED = "We couldn't reach the payment service, so you have not been charged. Please try again."
@@ -58,9 +60,7 @@ def _post(store: StoreSettings, payload: dict, idempotency_key: str) -> httpx.Re
         "Idempotency-Key": idempotency_key,
     }
     try:
-        return httpx.post(
-            store.client_api_url, content=body, headers=headers, timeout=TIMEOUT_SECONDS, follow_redirects=False
-        )
+        return _client.post(store.client_api_url, content=body, headers=headers, follow_redirects=False)
     except (httpx.ConnectError, httpx.ConnectTimeout) as exc:  # nothing was sent, so nothing can have been charged
         raise _Unreachable(True, str(exc) or type(exc).__name__) from exc
     except httpx.HTTPError as exc:  # may have been sent: outcome unknown (the idempotency key makes a retry safe)

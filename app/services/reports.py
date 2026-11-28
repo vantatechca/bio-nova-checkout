@@ -12,6 +12,8 @@ from app.models import OrderStatus
 from app.models.types import utcnow
 from app.repositories import AttributionRepository, OrderRepository, PaymentAttemptRepository, VisitRepository
 from app.schemas.reports import (
+    ArrivalRow,
+    ArrivalsOut,
     AttemptRow,
     AttemptStatsOut,
     AttributionOut,
@@ -23,6 +25,7 @@ from app.schemas.reports import (
     MethodRevenue,
     RecentAttempt,
     RevenueOut,
+    SessionsVsArrivalsRow,
     StatsOut,
     TabCounts,
     VisitRow,
@@ -165,12 +168,15 @@ def visits_report(
     repo = VisitRepository(db, store_id)
     window = resolve_window(days, tz, date_from, date_to)
     views, visitors = repo.totals(window.since, window.until)
+    views_ex, visitors_ex = repo.totals_excluding_internal(window.since, window.until)
     per_day = repo.daily(window.since, tz, window.until)
     funnel = repo.funnel(window.since, window.until)
     return VisitsOut(
         days=window.days,
         views=views,
         visitors=visitors,
+        views_excluding_internal=views_ex,
+        visitors_excluding_internal=visitors_ex,
         funnel=Funnel(
             created=funnel.created,
             viewed=funnel.viewed,
@@ -263,3 +269,59 @@ def visits_by_ip(
     window = resolve_window(days, 0, date_from, date_to)
     rows = VisitRepository(db, store_id).by_ip_prefix(ip_prefix, window.since, limit, offset, window.until)
     return [VisitRow.model_validate(v) for v in rows]
+
+
+def _paginate(rows: list, limit: int) -> tuple[list, bool]:
+    """Splits an over-fetched (``limit + 1`` rows requested) list into the page and whether there's a next one."""
+    return rows[:limit], len(rows) > limit
+
+
+def arrivals_report(
+    db: Session,
+    days: int,
+    tz: int,
+    store_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
+) -> ArrivalsOut:
+    """The checkout-arrival KPI feed: unique arrivals (internal traffic excluded) broken down by day/store/
+    campaign/term/click-id-presence/device/city, plus sessions-created-vs-arrived for the same dimensions
+    (minus device/city, which only exist once a session is actually opened)."""
+    window = resolve_window(days, tz, date_from, date_to)
+    rows, has_more = _paginate(VisitRepository(db, store_id).arrivals(window.since, tz, window.until, limit + 1, offset), limit)
+    srows, sessions_has_more = _paginate(
+        AttributionRepository(db, store_id).sessions_vs_arrivals(window.since, tz, window.until, limit + 1, offset), limit
+    )
+    return ArrivalsOut(
+        days=window.days,
+        rows=[
+            ArrivalRow(
+                date=date,
+                store_id=store,
+                utm_campaign=campaign,
+                utm_term=term,
+                has_click_id=has_click,
+                device=device,
+                city=city,
+                arrivals=arrivals,
+                views=views,
+            )
+            for date, store, campaign, term, has_click, device, city, arrivals, views in rows
+        ],
+        has_more=has_more,
+        sessions_vs_arrivals=[
+            SessionsVsArrivalsRow(
+                date=date,
+                store_id=store,
+                utm_campaign=campaign,
+                utm_term=term,
+                has_click_id=has_click,
+                sessions_created=created,
+                arrived=arrived,
+            )
+            for date, store, campaign, term, has_click, created, arrived in srows
+        ],
+        sessions_has_more=sessions_has_more,
+    )

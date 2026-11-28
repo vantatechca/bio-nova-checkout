@@ -119,6 +119,10 @@ class SessionOut(BaseModel):
     utm_term: str
     click_provider: str
     click_id: str
+    first_touch: dict
+    deep2k_anonymous_id: str
+    deep2k_session_id: str
+    landing_path: str
     metadata: dict = Field(validation_alias="meta")
     order_id: str | None
     viewed_at: datetime | None
@@ -162,6 +166,11 @@ class Branding(BaseModel):
     promo_badge: str
     promo_banner: str
     promo_perks: list[PromoPerkPublic]
+    # Session-replay tagging (see app.services.tracking): blank id/key = that tool is not loaded at all. Neither
+    # of these is a secret -- a Clarity project id and a PostHog *project* key are both meant to ship in client JS.
+    clarity_project_id: str = ""
+    posthog_project_key: str = ""
+    posthog_host: str = ""
 
 
 class PublicSessionOut(BaseModel):
@@ -187,6 +196,12 @@ class PublicSessionOut(BaseModel):
     payment_methods: list[PaymentMethodPublic] = Field(serialization_alias="paymentMethods")
     card: CardPublic | None = None
     branding: Branding
+    # Session-replay custom tags (see app.services.tracking): which store, which campaign, whether an ad click
+    # id was present -- the same shape X2's arrivals report uses, so the two can be cross-referenced.
+    store_id: int
+    utm_campaign: str
+    has_click_id: bool
+    deep2k_anonymous_id: str
 
 
 class CompleteSessionOut(BaseModel):

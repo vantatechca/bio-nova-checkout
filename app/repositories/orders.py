@@ -108,6 +108,52 @@ class OrderRepository:
         rows = list(self.db.scalars(stmt.order_by(Order.number.desc()).limit(limit + 1)))
         return rows[:limit], len(rows) > limit
 
+    def stale_pending_redirect_payments(self, older_than: datetime, limit: int = 200) -> list[Order]:
+        """Redirect-flow orders (``payment_url`` was issued) still pending since before ``older_than``.
+
+        Offline/bank-transfer orders are deliberately excluded (no ``payment_url``): sitting pending for a
+        while is their normal, expected state, not a stuck payment -- see
+        app.services.orders.expire_stale_pending_payments.
+        """
+        stmt = (
+            select(Order)
+            .where(
+                Order.payment_status == PaymentStatus.PENDING,
+                Order.payment_url.is_not(None),
+                Order.payment_url != "",
+                Order.pending_since.is_not(None),
+                Order.pending_since < older_than,
+                _scope(self.store_id),
+            )
+            .order_by(Order.pending_since.asc())
+            .limit(limit)
+        )
+        return list(self.db.scalars(stmt))
+
+    def analytics_list(
+        self, since: datetime, until: datetime | None, limit: int = 100, offset: int = 0
+    ) -> tuple[list[Order], bool]:
+        """For the read-only analytics key (see app.services.orders.analytics_orders): every order in the
+        window, newest first. Unlike ``list()`` there's no tab/status/search filter -- a bot reading this wants
+        the raw feed for its own analysis, not the admin UI's tabs.
+
+        Ordered by ``created_at`` then ``number`` (unique and monotonic) as a tiebreaker: two orders can share
+        the same millisecond under load (or in a tight test loop), and an unstable sort between two separate
+        paged queries could repeat or skip a row -- the same reason ``list()`` sorts by ``number`` alone.
+        """
+        stmt = (
+            select(Order)
+            .where(
+                Order.created_at.between(since, until) if until is not None else Order.created_at >= since,
+                _scope(self.store_id),
+            )
+            .order_by(Order.created_at.desc(), Order.number.desc())
+            .offset(offset)
+            .limit(limit + 1)
+        )
+        rows = list(self.db.scalars(stmt))
+        return rows[:limit], len(rows) > limit
+
     # ---- aggregates
     def counts(self, currency: str) -> OrderCounts:
         def flag(expr: ColumnElement[bool]):

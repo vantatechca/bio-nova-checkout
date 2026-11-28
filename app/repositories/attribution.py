@@ -6,6 +6,7 @@ from sqlalchemy import ColumnElement, and_, case, func, select, true
 from sqlalchemy.orm import Session
 
 from app.models import CheckoutSession, Order, OrderStatus, PaymentStatus, SessionStatus
+from app.repositories._time import local_day
 
 
 class AttributionRepository:
@@ -71,4 +72,39 @@ class AttributionRepository:
         return [
             (campaign, int(sessions), int(viewed), int(orders), int(revenue))
             for campaign, sessions, viewed, orders, revenue in rows
+        ]
+
+    def sessions_vs_arrivals(
+        self,
+        since: datetime,
+        tz_offset_minutes: int,
+        until: datetime | None = None,
+        limit: int = 1000,
+        offset: int = 0,
+    ) -> list[tuple]:
+        """Sessions created vs ever opened ("pressed Checkout" vs "arrived"), excluding internal/test sessions,
+        one row per local day x store x campaign x search term x ad-click-id presence. Bucketed by the session's
+        own ``created_at`` day, not the day it was (maybe later) viewed -- this answers "of what we created that
+        day, how much got opened," not "how many opens happened that day."
+        """
+        s = CheckoutSession
+        local = local_day(s.created_at, tz_offset_minutes)
+        has_click = s.click_id != ""
+        created = func.count(s.id)
+        arrived = func.coalesce(func.sum(case((s.viewed_at.is_not(None), 1), else_=0)), 0)
+        rows = self.db.execute(
+            select(local, s.store_id, s.utm_campaign, s.utm_term, has_click, created, arrived)
+            .where(
+                s.created_at.between(since, until) if until is not None else s.created_at >= since,
+                self._scope,
+                s.is_internal.is_(False),
+            )
+            .group_by(local, s.store_id, s.utm_campaign, s.utm_term, has_click)
+            .order_by(local.desc(), created.desc())
+            .offset(offset)
+            .limit(limit)
+        ).all()
+        return [
+            (day.isoformat(), store_id, campaign, term, bool(click), int(cr), int(ar))
+            for day, store_id, campaign, term, click, cr, ar in rows
         ]

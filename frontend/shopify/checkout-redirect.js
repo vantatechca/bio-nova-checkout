@@ -26,25 +26,70 @@
   var endpoint = new URL('/api/shopify/checkout', script.src).href;
   var busy = false;
 
-  // Ad attribution, if the shopper arrived on this page via an ad link (persists for the rest of the visit).
+  // Ad attribution, if the shopper arrived on this page via an ad link. Kept in two first-party cookies (90
+  // days, so a new tab or a return visit still has it -- sessionStorage alone does not survive either):
+  // "last touch" (each field updates independently as it's seen again) and "first touch" (written once, ever,
+  // for this browser, and never changed after that), so both can be reported separately.
   var ATTRIBUTION_FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'ttclid', 'fbclid', 'wbraid', 'gbraid'];
-  var attribution = {};
+  var FIRST_TOUCH_COOKIE = 'checkout_ft';
+  var LAST_TOUCH_COOKIE = 'checkout_lt';
+  var NINETY_DAYS_SECONDS = 90 * 24 * 3600;
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function setCookie(name, value, maxAgeSeconds) {
+    var secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = name + '=' + encodeURIComponent(value) + '; max-age=' + maxAgeSeconds + '; path=/; SameSite=Lax' + secure;
+  }
+
+  function readTouchCookie(name) {
+    var raw = getCookie(name);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
+  // Only the recognised keys travel to the server -- anything else in a cookie (tampered or stale) is dropped.
+  function attributionOnly(obj) {
+    var out = {};
+    ATTRIBUTION_FIELDS.forEach(function (key) { if (obj && obj[key]) out[key] = obj[key]; });
+    return out;
+  }
+
+  var lastTouch = attributionOnly(readTouchCookie(LAST_TOUCH_COOKIE));
+  var firstTouch = readTouchCookie(FIRST_TOUCH_COOKIE); // null until the very first tagged page this browser saw
+
   (function captureAttribution() {
     var params = new URLSearchParams(location.search);
+    var seenNow = {};
     var found = false;
     ATTRIBUTION_FIELDS.forEach(function (key) {
       var value = params.get(key);
-      if (value) { attribution[key] = value; found = true; }
+      if (value) { seenNow[key] = value; found = true; }
     });
-    if (found) {
-      try { sessionStorage.setItem('checkout-attribution', JSON.stringify(attribution)); } catch { /* storage unavailable */ }
-    } else {
-      try {
-        var stored = sessionStorage.getItem('checkout-attribution');
-        if (stored) attribution = JSON.parse(stored);
-      } catch { /* storage unavailable or nothing stored */ }
+    if (!found) return;
+
+    ATTRIBUTION_FIELDS.forEach(function (key) { if (seenNow[key]) lastTouch[key] = seenNow[key]; });
+    setCookie(LAST_TOUCH_COOKIE, JSON.stringify(lastTouch), NINETY_DAYS_SECONDS);
+
+    if (!firstTouch) {
+      firstTouch = seenNow;
+      firstTouch._landing_path = location.pathname;
+      setCookie(FIRST_TOUCH_COOKIE, JSON.stringify(firstTouch), NINETY_DAYS_SECONDS);
     }
   })();
+
+  function landingPath() {
+    return (firstTouch && firstTouch._landing_path) || location.pathname;
+  }
+
+  // window.Deep2k may not be ready until some point after this script runs, so it's read fresh at checkout time.
+  function deep2kIds() {
+    var d = window.Deep2k || {};
+    return { anonymousId: d.anonymousId || '', sessionId: d.sessionId || '' };
+  }
 
   // Shopify's accelerated checkout buttons go straight to Shopify's checkout, so hide them.
   if (!script.hasAttribute('data-keep-dynamic-buttons')) {
@@ -89,6 +134,7 @@
   }
 
   function post(cartToken, items) {
+    var d2k = deep2kIds();
     return fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -96,7 +142,11 @@
         cart_token: cartToken,
         shop: (window.Shopify && window.Shopify.shop) || '', // tells the checkout which of its stores this is
         items: items,
-        attribution: attribution
+        attribution: lastTouch,
+        first_touch: attributionOnly(firstTouch),
+        deep2k_anonymous_id: d2k.anonymousId,
+        deep2k_session_id: d2k.sessionId,
+        landing_path: landingPath()
       })
     }).then(function (r) {
       return r.json().then(function (body) { return { ok: r.ok, body: body }; });

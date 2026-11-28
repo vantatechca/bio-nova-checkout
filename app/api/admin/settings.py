@@ -74,5 +74,6 @@ def create_test_session(request: Request, db: DbSession, store: AdminStore):
             cancel_url=f"{base}/admin",
             external_ref=f"TEST-{int(utcnow().timestamp())}",
         ),
+        is_internal=True,  # a synthetic demo cart, not a heuristic case -- always internal, never a real shopper
     )
     return checkout.session_out(session, base)

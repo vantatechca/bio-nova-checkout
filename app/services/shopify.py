@@ -6,6 +6,8 @@ browser: they are looked up from Shopify's Storefront API, then a normal checkou
 
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -19,10 +21,14 @@ from app.schemas.checkout import AttributionIn, CreateSessionIn, LineItemIn
 from app.schemas.shopify import CartLine
 from app.services import checkout
 from app.services.config import AppConfig, StoreRecord
+from app.services.http import pooled_client
+
+log = logging.getLogger(__name__)
 
 # Shopify serves requests for retired versions with the oldest supported one, so this keeps working over time.
 STOREFRONT_API_VERSION = "2026-04"
 TIMEOUT_SECONDS = 10
+_client = pooled_client(TIMEOUT_SECONDS)
 
 VARIANT_QUERY = """
 query Variants($ids: [ID!]!) {
@@ -72,15 +78,17 @@ class ShopifyClient:
         self.domain, self.token = domain, storefront_token
 
     def _query(self, query: str, variables: dict | None = None) -> dict:
+        started = time.monotonic()
         try:
-            response = httpx.post(
+            response = _client.post(
                 graphql_url(self.domain),
                 json={"query": query, "variables": variables or {}},
                 headers={"X-Shopify-Storefront-Access-Token": self.token, "Content-Type": "application/json"},
-                timeout=TIMEOUT_SECONDS,
             )
         except httpx.HTTPError as exc:
+            log.warning("Shopify Storefront API unreachable after %.0fms: %s", (time.monotonic() - started) * 1000, exc)
             raise BadGateway("Could not reach Shopify, please try again") from exc
+        log.info("Shopify Storefront API call took %.0fms (status %s)", (time.monotonic() - started) * 1000, response.status_code)
         if response.status_code in (401, 403):
             raise BadGateway("Shopify rejected the Storefront access token — check it in Settings")
         if response.status_code == 404:
@@ -147,6 +155,12 @@ def create_checkout_from_cart(
     lines: list[CartLine],
     cart_token: str = "",
     attribution: AttributionIn | None = None,
+    *,
+    is_internal: bool = False,
+    first_touch: AttributionIn | None = None,
+    deep2k_anonymous_id: str = "",
+    deep2k_session_id: str = "",
+    landing_path: str = "",
 ) -> CheckoutSession:
     store = record.settings
     if not (store.shopify_domain and store.shopify_storefront_token):
@@ -196,4 +210,9 @@ def create_checkout_from_cart(
             attribution=attribution or AttributionIn(),
             metadata={"source": "shopify"},
         ),
+        is_internal=is_internal,
+        first_touch=first_touch,
+        deep2k_anonymous_id=deep2k_anonymous_id,
+        deep2k_session_id=deep2k_session_id,
+        landing_path=landing_path,
     )

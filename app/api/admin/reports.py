@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from app.api.deps import Config, DbSession, StoreScope
-from app.schemas.reports import AttemptStatsOut, AttributionOut, RevenueOut, StatsOut, VisitRow, VisitsOut
+from app.schemas.reports import ArrivalsOut, AttemptStatsOut, AttributionOut, RevenueOut, StatsOut, VisitRow, VisitsOut
 from app.services import reports
 
 router = APIRouter(prefix="/api/admin", tags=["admin: reports"])
@@ -14,6 +14,7 @@ DaysQuery = Query(default=30, ge=1, le=reports.MAX_DAYS)
 # An exact calendar window (inclusive, "YYYY-MM-DD"); give both to use this instead of ``days``.
 DateFromQuery = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 DateToQuery = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+ArrivalsLimitQuery = Query(default=200, ge=1, le=2000)
 
 
 @router.get("/stats", response_model=StatsOut)
@@ -82,3 +83,19 @@ def visits_lookup(
 ):
     """``ip`` filters by prefix; left empty, this is just the most recent visits."""
     return reports.visits_by_ip(db, ip, days, store, limit, offset, date_from, date_to)
+
+
+@router.get("/arrivals", response_model=ArrivalsOut)
+def arrivals(
+    db: DbSession,
+    store: StoreScope,
+    days: int = DaysQuery,
+    tz: int = TzOffset,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+    limit: int = ArrivalsLimitQuery,
+    offset: int = Query(default=0, ge=0),
+):
+    """The checkout-arrival KPI feed: unique arrivals (internal traffic excluded) per day/store/campaign/term/
+    click-id-presence/device/city, plus sessions-created-vs-arrived for the same campaign/term/click-id split."""
+    return reports.arrivals_report(db, days, tz, store, date_from, date_to, limit, offset)

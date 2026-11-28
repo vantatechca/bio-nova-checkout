@@ -42,3 +42,31 @@ class AnalyticsOrderOut(BaseModel):
     metadata: dict = Field(validation_alias="meta")
     paid_at: datetime | None
     created_at: datetime
+
+
+class AnalyticsOrderListRow(BaseModel):
+    """One row of the read-only orders feed (see app.services.orders.analytics_orders). Customer contact info
+    is masked, never returned raw or omitted outright -- enough to recognise a repeat customer, not enough to
+    contact them."""
+
+    number: int
+    store_id: int
+    created_at: datetime
+    status: str
+    payment_status: str
+    total: int
+    currency: str
+    utm_source: str
+    utm_medium: str
+    utm_campaign: str
+    utm_content: str
+    utm_term: str
+    click_provider: str
+    click_id: str
+    customer_email_masked: str
+    customer_phone_masked: str
+
+
+class AnalyticsOrderListOut(BaseModel):
+    rows: list[AnalyticsOrderListRow]
+    has_more: bool

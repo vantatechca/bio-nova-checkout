@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import re
 import secrets
 from typing import Literal
@@ -87,6 +88,22 @@ def _check_shop_domain(v: str) -> str:
     return v
 
 
+def _check_ip_ranges(v: str) -> str:
+    """Comma separated IPs/CIDRs (e.g. "203.0.113.0/24, 2001:db8::/32"), validated so a typo fails loudly at
+    save time instead of silently never matching anything."""
+    cleaned = []
+    for part in v.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            ipaddress.ip_network(part, strict=False)
+        except ValueError as exc:
+            raise ValueError(f"{part!r} is not a valid IP address or CIDR range") from exc
+        cleaned.append(part)
+    return ", ".join(cleaned)
+
+
 class PromoPerk(CamelModel):
     """One highlight card shown inside the checkout's promo banner (e.g. "Free gift auto-added")."""
 
@@ -119,6 +136,22 @@ class StoreSettings(CamelModel):
     webhook_url: Text2000 = ""
     webhook_secret: str = Field(default_factory=lambda: new_secret("whsec"))
     allowed_domains: Text1000 = ""  # comma separated hostnames allowed in success/cancel URLs; blank = any
+    # Comma separated IPs/CIDRs (shared across stores) treated as internal/non-customer traffic for analytics:
+    # flagged on each Visit (Visit.is_internal) and reported as a breakdown, never silently dropped from "all".
+    internal_ip_ranges: Text2000 = ""
+    # A request also counts as internal when its User-Agent contains any of these (case-insensitive substrings) --
+    # for a tester that has no stable IP, e.g. a fixed string their browser/script always sends.
+    internal_user_agent_markers: Text1000 = ""
+    # ...or when it sends this exact header/value pair (a fixed marker a tester's own tooling adds). Both must be
+    # set for the check to apply; either blank disables it.
+    internal_header_name: Text100 = ""
+    internal_header_value: Text200 = ""
+    # Session-replay tagging on the checkout page (shared: this whole service is one domain, so one Clarity
+    # project covers every store -- Clarity recommends a separate project per *domain*, not per store). Blank
+    # project id/key = that tool is simply not loaded; nothing is sent anywhere. See app.services.tracking.
+    clarity_project_id: Text40 = ""
+    posthog_project_key: Text100 = ""
+    posthog_host: Text200 = ""  # blank = PostHog's own default ingestion host
     # Branding shown on the checkout page so it matches the storefront
     logo_url: Text2000 = ""
     store_url: Text2000 = ""  # where the logo links to
@@ -154,10 +187,20 @@ class StoreSettings(CamelModel):
     _shopify_domain = field_validator("shopify_domain")(_check_shop_domain)
     _client_api_url = field_validator("client_api_url")(_check_secure_url)
     _card_form_url = field_validator("card_form_url")(_check_secure_url)
+    _internal_ip_ranges = field_validator("internal_ip_ranges")(_check_ip_ranges)
+    _posthog_host = field_validator("posthog_host")(_check_http_url)
 
     @property
     def allowed_domain_list(self) -> list[str]:
         return [d.strip().lower() for d in self.allowed_domains.split(",") if d.strip()]
+
+    @property
+    def internal_ip_range_list(self) -> list[str]:
+        return [r.strip() for r in self.internal_ip_ranges.split(",") if r.strip()]
+
+    @property
+    def internal_user_agent_marker_list(self) -> list[str]:
+        return [m.strip().lower() for m in self.internal_user_agent_markers.split(",") if m.strip()]
 
     @property
     def card_payments_ready(self) -> bool:
@@ -174,6 +217,13 @@ class StoreSettingsUpdate(CamelModel):
     currency: str | None = None
     webhook_url: Text2000 | None = None
     allowed_domains: Text1000 | None = None
+    internal_ip_ranges: Text2000 | None = None
+    internal_user_agent_markers: Text1000 | None = None
+    internal_header_name: Text100 | None = None
+    internal_header_value: Text200 | None = None
+    clarity_project_id: Text40 | None = None
+    posthog_project_key: Text100 | None = None
+    posthog_host: Text200 | None = None
     logo_url: Text2000 | None = None
     store_url: Text2000 | None = None
     nav_links: list[NavLink] | None = Field(default=None, max_length=8)
@@ -200,6 +250,16 @@ class StoreSettingsUpdate(CamelModel):
     @field_validator("webhook_url", "logo_url", "store_url")
     @classmethod
     def _http_urls(cls, v: str | None) -> str | None:
+        return _check_http_url(v) if v is not None else None
+
+    @field_validator("internal_ip_ranges")
+    @classmethod
+    def _ip_ranges(cls, v: str | None) -> str | None:
+        return _check_ip_ranges(v) if v is not None else None
+
+    @field_validator("posthog_host")
+    @classmethod
+    def _posthog_host(cls, v: str | None) -> str | None:
         return _check_http_url(v) if v is not None else None
 
     @field_validator("shopify_domain")

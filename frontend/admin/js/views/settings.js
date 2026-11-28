@@ -38,8 +38,17 @@ export async function loadSettings() {
       <div class="secret"><div class="mono" data-role="analytics-key">${MASK}</div><button data-role="show-analytics-key">Show</button><button class="danger" data-role="rotate-analytics-key">Rotate</button></div>
       <pre class="mono">curl "${esc(base)}/api/v1/analytics/attribution?date_from=2026-11-17&date_to=2026-11-19" \\
   -H "Authorization: Bearer YOUR_ANALYTICS_KEY" ${storeHeader}</pre>
-      <p class="muted" style="font-size:13.5px;margin-top:10px">Routes: <code>/stats</code>, <code>/revenue</code>, <code>/visits</code>, <code>/visits/lookup</code>, <code>/attribution</code>, <code>/attempts</code>, <code>/abandoned</code>, <code>/orders/&lt;number&gt;</code>, <code>/sessions/&lt;id&gt;/timeline</code>.
+      <p class="muted" style="font-size:13.5px;margin-top:10px">Routes: <code>/stats</code>, <code>/revenue</code>, <code>/visits</code>, <code>/visits/lookup</code>, <code>/arrivals</code>, <code>/attribution</code>, <code>/attempts</code>, <code>/abandoned</code>, <code>/orders/&lt;number&gt;</code>, <code>/sessions/&lt;id&gt;/timeline</code>.
       Date range: either <code>days</code> (1-366, default 30) or an exact <code>date_from</code>/<code>date_to</code> pair as shown above. Long lists (<code>/visits/lookup</code>, <code>/abandoned</code>, <code>/attempts</code>) take <code>limit</code> and <code>offset</code> to page through more than the default.${state.stores.length > 1 ? ' Add <code>X-Checkout-Store: &lt;store id&gt;</code> to scope a request to one store; left out, every store\'s data is included.' : ''}</p>
+    </div>
+
+    <div class="card"><h2>Session replay <span class="scope shared">Shared by all stores</span> <span class="muted" style="font-weight:400">(optional — one checkout domain, so one project covers every store)</span></h2>
+      <p class="sub">Leave blank to turn a tool off entirely — nothing is loaded and nothing is sent anywhere. Name, email, phone and address fields are always masked in the recording.</p>
+      <div class="grid2">
+        <label>Microsoft Clarity project id<input data-field="clarityProjectId" placeholder="abcdefghij" value="${esc(cfg.clarityProjectId)}"></label>
+        <label>PostHog project key <span class="muted">(the public project key, not a secret/personal key)</span><input data-field="posthogProjectKey" placeholder="phc_…" value="${esc(cfg.posthogProjectKey)}"></label>
+      </div>
+      <label>PostHog host <span class="muted">(optional — blank uses PostHog's default)</span><input data-field="posthogHost" placeholder="https://us.i.posthog.com" value="${esc(cfg.posthogHost)}"></label>
     </div>
 
     <div class="card"><h2>Branding <span class="scope own">This store only</span></h2><p class="sub">Make the customer checkout page match your storefront.</p>
@@ -106,6 +115,12 @@ export async function loadSettings() {
         <label>Default tax rate (%)<input data-field="taxRatePercent" type="number" min="0" max="100" step="0.01" value="${cfg.taxRatePercent}"></label>
       </div>
       <label>Allowed redirect domains <span class="muted">(comma separated, blank = any — recommended: your store's domain)</span><input data-field="allowedDomains" placeholder="yourstore.com" value="${esc(cfg.allowedDomains)}"></label>
+      <label>Internal/non-customer IP ranges <span class="muted">(comma separated IPs or CIDRs, e.g. 203.0.113.0/24 — testers, monitoring, your own office; flagged on the Visits tab, never hidden from the raw totals)</span><input data-field="internalIpRanges" placeholder="203.0.113.0/24, 2001:db8::/32" value="${esc(cfg.internalIpRanges)}"></label>
+      <label>Internal User-Agent markers <span class="muted">(comma separated, case-insensitive — for a tester with no fixed IP, e.g. a string their browser/script always sends)</span><input data-field="internalUserAgentMarkers" placeholder="qa-tester-bot" value="${esc(cfg.internalUserAgentMarkers)}"></label>
+      <div class="grid2">
+        <label>Internal marker header name <span class="muted">(optional — a header a tester's own tooling adds)</span><input data-field="internalHeaderName" placeholder="X-Test-Client" value="${esc(cfg.internalHeaderName)}"></label>
+        <label>Internal marker header value <span class="muted">(both fields must be set for the check to apply)</span><input data-field="internalHeaderValue" placeholder="carl" value="${esc(cfg.internalHeaderValue)}"></label>
+      </div>
 
       <h3>Payment methods</h3>
       <p class="muted" style="font-size:13.5px;margin:0 0 12px">Offline methods leave the order in <b>Pending</b> until it is marked paid. In instructions, <code>{order}</code>, <code>{total}</code> and <code>{store}</code> are filled in automatically.</p>
@@ -251,6 +266,13 @@ export async function loadSettings() {
         freeShippingMin: Math.round(Number(field('freeShippingMin').value) || 0),
         taxRatePercent: Number(field('taxRatePercent').value) || 0,
         allowedDomains: field('allowedDomains').value,
+        internalIpRanges: field('internalIpRanges').value,
+        internalUserAgentMarkers: field('internalUserAgentMarkers').value,
+        internalHeaderName: field('internalHeaderName').value,
+        internalHeaderValue: field('internalHeaderValue').value,
+        clarityProjectId: field('clarityProjectId').value,
+        posthogProjectKey: field('posthogProjectKey').value,
+        posthogHost: field('posthogHost').value,
         logoUrl: field('logoUrl').value,
         storeUrl: field('storeUrl').value,
         notice: field('notice').value,

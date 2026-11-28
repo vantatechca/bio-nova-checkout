@@ -17,8 +17,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from app.api.deps import AnalyticsCaller, Config, DbSession
-from app.schemas.analytics import AnalyticsOrderOut
-from app.schemas.reports import AttemptStatsOut, AttributionOut, RevenueOut, StatsOut, VisitRow, VisitsOut
+from app.schemas.analytics import AnalyticsOrderListOut, AnalyticsOrderOut
+from app.schemas.reports import ArrivalsOut, AttemptStatsOut, AttributionOut, RevenueOut, StatsOut, VisitRow, VisitsOut
 from app.schemas.sessions import AnalyticsAbandonedSessionsOut, TimelineItemOut
 from app.services import orders, reports, sessions
 
@@ -33,6 +33,7 @@ DateToQuery = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 HoursQuery = Query(default=6, ge=1, le=24 * 30)
 LimitQuery = Query(default=50, ge=1, le=500)
 OffsetQuery = Query(default=0, ge=0)
+ArrivalsLimitQuery = Query(default=200, ge=1, le=2000)
 
 
 @router.get("/stats", response_model=StatsOut)
@@ -105,6 +106,23 @@ def visits_lookup(
     return reports.visits_by_ip(db, ip, days, caller.scope, limit, offset, date_from, date_to)
 
 
+@router.get("/arrivals", response_model=ArrivalsOut)
+def arrivals(
+    db: DbSession,
+    caller: AnalyticsCaller,
+    days: int = DaysQuery,
+    tz: int = TzOffset,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+    limit: int = ArrivalsLimitQuery,
+    offset: int = OffsetQuery,
+):
+    """The checkout-arrival KPI feed: unique arrivals (internal traffic excluded) per day/store/campaign/term/
+    click-id-presence/device/city, plus sessions-created-vs-arrived for the same campaign/term/click-id split.
+    Page with ``offset`` once a response's ``has_more``/``sessions_has_more`` is true."""
+    return reports.arrivals_report(db, days, tz, caller.scope, date_from, date_to, limit, offset)
+
+
 @router.get("/abandoned", response_model=AnalyticsAbandonedSessionsOut)
 def abandoned(
     db: DbSession, caller: AnalyticsCaller, hours: int = HoursQuery, limit: int = LimitQuery, offset: int = OffsetQuery
@@ -116,6 +134,22 @@ def abandoned(
 @router.get("/sessions/{session_id}/timeline", response_model=list[TimelineItemOut])
 def timeline(session_id: str, db: DbSession, caller: AnalyticsCaller):
     return sessions.session_timeline(db, session_id, caller.scope)
+
+
+@router.get("/orders", response_model=AnalyticsOrderListOut)
+def orders_list(
+    db: DbSession,
+    caller: AnalyticsCaller,
+    days: int = DaysQuery,
+    date_from: str | None = DateFromQuery,
+    date_to: str | None = DateToQuery,
+    limit: int = LimitQuery,
+    offset: int = OffsetQuery,
+):
+    """Every order in the window, newest first: number, store, created time, status, total and attribution
+    tags. Customer email/phone are masked (e.g. ``j***@example.com``), never returned raw or omitted outright.
+    Page with ``offset`` once a response comes back with ``has_more: true``."""
+    return orders.analytics_orders(db, caller.scope, days, date_from, date_to, limit, offset)
 
 
 @router.get("/orders/{key}", response_model=AnalyticsOrderOut)

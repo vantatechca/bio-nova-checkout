@@ -24,6 +24,17 @@ function riskBadgesHtml(flags) {
     .join('')}</div>`;
 }
 
+/** Only shown when first touch (the very first ad/campaign tag seen) differs from the order's own (last-touch)
+ * campaign/click id -- otherwise it's redundant with the Attribution block already shown above it. */
+function firstTouchHtml(firstTouch, lastCampaign, lastClickId) {
+  const ft = firstTouch || {};
+  const campaign = ft.utm_campaign || '';
+  const clickId = ft.click_id || '';
+  if (!campaign && !clickId) return '';
+  if (campaign === lastCampaign && clickId === lastClickId) return '';
+  return `First touch: ${campaign ? `campaign <b>${esc(campaign)}</b>` : ''}${campaign && clickId ? ', ' : ''}${clickId ? `ad click ${esc(ft.click_provider)}:${esc(clickId)}` : ''}`;
+}
+
 let orders = [];
 const view = () => $('#view-orders');
 const drawer = () => $('#drawer');
@@ -186,7 +197,7 @@ function drawerHtml(o) {
       ${awaitingPayment ? `
       <div class="callout"><span class="ci" data-icon="clock"></span><div class="grow">
         <b>Awaiting payment — ${esc(o.payment_method.label)}</b>
-        <p style="margin:4px 0 14px">Expecting ${money(o.total, o.currency)}. Once the transfer lands, record it here.</p>
+        <p style="margin:4px 0 14px">Expecting ${money(o.total, o.currency)}. Once the transfer lands, record it here.${o.pending_since ? ` Pending since ${esc(formatDate(o.pending_since))}.` : ''}</p>
         <label>Payment reference <span class="muted">(e.g. the processor's transaction id)</span><input data-role="payment-ref" value="${esc(o.payment_reference)}"></label>
         <label class="inline"><input type="checkbox" class="switch" data-role="receipt" checked> Email the customer a payment receipt</label>
         <div class="row" style="margin-top:8px"><button class="success" data-role="mark-paid">Mark as paid</button><span class="msg" data-role="paid-msg"></span></div>
@@ -202,11 +213,14 @@ function drawerHtml(o) {
         ${o.order_country ? `Country: <b>${esc(o.order_country)}</b>` : ''}${o.order_ip ? ` · IP ${esc(o.order_ip)}` : ''}
       </p>${riskBadgesHtml(o.risk_flags)}</div>` : ''}
 
-      ${(o.utm_campaign || o.utm_source || o.click_id) ? `
+      ${(o.utm_campaign || o.utm_source || o.click_id || o.deep2k_anonymous_id || o.landing_path) ? `
       <div class="block"><h3>Attribution</h3><p class="muted" style="font-size:13px">
         ${o.utm_campaign ? `Campaign: <b>${esc(o.utm_campaign)}</b><br>` : ''}
         ${o.utm_source || o.utm_medium ? `Source / medium: ${esc(o.utm_source)}${o.utm_source && o.utm_medium ? ' / ' : ''}${esc(o.utm_medium)}<br>` : ''}
-        ${o.click_id ? `Ad click: ${esc(o.click_provider)}:${esc(o.click_id)}` : ''}
+        ${o.click_id ? `Ad click: ${esc(o.click_provider)}:${esc(o.click_id)}<br>` : ''}
+        ${o.landing_path ? `Landing page: ${esc(o.landing_path)}<br>` : ''}
+        ${o.deep2k_anonymous_id || o.deep2k_session_id ? `Deep2K: ${esc(o.deep2k_anonymous_id || '—')} / ${esc(o.deep2k_session_id || '—')}<br>` : ''}
+        ${firstTouchHtml(o.first_touch, o.utm_campaign, o.click_id)}
       </p></div>` : ''}
 
       <div class="block"><h3>Items</h3>

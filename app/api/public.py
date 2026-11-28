@@ -7,7 +7,7 @@ import secrets
 from fastapi import APIRouter, Query, Request, Response
 
 from app.api.deps import Config, DbSession, base_url
-from app.errors import BadGateway, BadRequest
+from app.errors import AppError, BadGateway, BadRequest
 from app.models import STEPS
 from app.repositories import CheckoutEventRepository, OrderRepository
 from app.schemas.checkout import CompleteSessionIn, CompleteSessionOut, PublicSessionOut
@@ -55,6 +55,7 @@ def view_session(session_id: str, request: Request, response: Response, db: DbSe
                 host=request.headers.get("host", ""),
                 referrer=ref,
                 visitor_id=visitor_id,
+                headers=request.headers,
             ),
         )
     return checkout.public_view(config, session, order)
@@ -82,6 +83,20 @@ def place_order(session_id: str, data: CompleteSessionIn, request: Request, db: 
     except BadGateway as exc:
         payment_attempts.record_outcome(
             store_id=store_id, session_id=session_id, outcome="error", reason=exc.message, method_id=data.payment_method
+        )
+        raise
+    except AppError:
+        raise  # e.g. NotFound/Gone (stale or bad session link): not a payment failure, nothing to log here
+    except Exception as exc:
+        # Anything else -- a bug, a timeout not already wrapped as BadGateway, ... -- would otherwise leave
+        # "customer clicked Pay, no order, no trace" with nothing but a traceback in the server's own logs,
+        # which is exactly the mystery X8 asks about (two pay clicks that produced no order, cause unknown).
+        payment_attempts.record_outcome(
+            store_id=store_id,
+            session_id=session_id,
+            outcome="error",
+            reason=f"{type(exc).__name__}: {exc}"[:200],
+            method_id=data.payment_method,
         )
         raise
     if created:

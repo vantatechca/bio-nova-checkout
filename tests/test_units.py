@@ -12,7 +12,7 @@ from app.services.emails import render_email
 from app.services.money import format_money
 from app.services.payments import PaymentRequest, process_payment
 from app.services.reports import day_range, local_day, local_day_start
-from app.services.visits import device_of, referrer_host
+from app.services.visits import device_of, is_internal_ip, referrer_host
 from app.services.webhooks import sign
 
 
@@ -56,6 +56,24 @@ def test_referrer_host_ignores_own_host_and_garbage():
     assert referrer_host("", "x") == "" and referrer_host("not a url", "x") == ""
 
 
+@pytest.mark.parametrize(
+    "ip,ranges,expected",
+    [
+        ("203.0.113.5", ["203.0.113.0/24"], True),
+        ("203.0.113.20", ["203.0.113.0/28"], False),  # /28 only covers .0-.15, so .20 is outside it
+        ("203.0.114.5", ["203.0.113.0/24"], False),
+        ("203.0.113.5", [], False),  # no ranges configured = nothing is internal
+        ("", ["203.0.113.0/24"], False),  # unparsable IP is "not internal", not an error
+        ("not-an-ip", ["203.0.113.0/24"], False),
+        ("203.0.113.5", ["not-a-range", "203.0.113.0/24"], True),  # one bad entry doesn't block the rest
+        ("2001:db8::1", ["2001:db8::/32"], True),
+        ("2001:db8::1", ["203.0.113.0/24"], False),  # family mismatch never matches, never errors
+    ],
+)
+def test_is_internal_ip(ip, ranges, expected):
+    assert is_internal_ip(ip, ranges) == expected
+
+
 def test_local_day_helpers_follow_js_timezone_offsets():
     moment = datetime(2026, 11, 5, 1, 30, tzinfo=UTC)
     assert local_day(moment, 0) == "2026-11-05"
@@ -94,6 +112,13 @@ def test_store_settings_normalise_and_validate():
     assert StoreSettings(allowedDomains=" A.com, b.org ,").allowed_domain_list == ["a.com", "b.org"]
     with pytest.raises(ValueError):
         StoreSettings(taxRatePercent=101)
+
+
+def test_internal_ip_ranges_normalise_and_reject_garbage():
+    settings = StoreSettings(internalIpRanges=" 203.0.113.0/24 , 2001:db8::/32 ,")
+    assert settings.internal_ip_range_list == ["203.0.113.0/24", "2001:db8::/32"]
+    with pytest.raises(ValueError, match="not a valid IP"):
+        StoreSettings(internalIpRanges="not-a-range")
 
 
 def _order(**overrides) -> Order:

@@ -82,12 +82,21 @@ class Order(Base):
     utm_term: Mapped[str] = mapped_column(String(200), default="")
     click_provider: Mapped[str] = mapped_column(String(20), default="")
     click_id: Mapped[str] = mapped_column(String(200), default="")
+    # Copied from the session at order creation -- see CheckoutSession.first_touch for what these mean.
+    first_touch: Mapped[dict] = mapped_column(JSON, default=dict)
+    deep2k_anonymous_id: Mapped[str] = mapped_column(String(200), default="")
+    deep2k_session_id: Mapped[str] = mapped_column(String(200), default="")
+    landing_path: Mapped[str] = mapped_column(String(300), default="")
     order_ip: Mapped[str] = mapped_column(String(45), default="")  # subject to VISIT_IP_MODE, like visits.ip
     order_country: Mapped[str] = mapped_column(String(2), default="")
     risk_flags: Mapped[dict] = mapped_column(JSON, default=dict)  # informational only -- never blocks an order
     meta: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
 
     paid_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Set while payment_status == PENDING, cleared the moment it becomes anything else; a fresh clock each time
+    # an order (re-)enters pending, not just at creation. See app.services.orders.expire_stale_pending_payments,
+    # which only acts when payment_url is also set -- an offline/bank-transfer order is *meant* to sit pending.
+    pending_since: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
